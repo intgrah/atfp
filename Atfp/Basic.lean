@@ -503,9 +503,13 @@ def PolynomialFunctor.denotation : PolynomialFunctor → Type u ⥤ Type u
       map f := Sum.map (F.denotation.map f) (G.denotation.map f)
     }
 
+notation "〚" P "〛" => PolynomialFunctor.denotation P
+
+/-! Lemma 3.4.2 -/
+
 def PolynomialFunctor.monotone (P : PolynomialFunctor) {α β : Type u} (f : α ↪ β) :
-    P.denotation.obj α ↪ P.denotation.obj β where
-  toFun := P.denotation.map f
+    〚P〛.obj α ↪ 〚P〛.obj β where
+  toFun := 〚P〛.map f
   inj' := by
     induction P with
     | id => exact f.inj'
@@ -522,6 +526,16 @@ def PolynomialFunctor.monotone (P : PolynomialFunctor) {α β : Type u} (f : α 
           Sum.inl.injEq, Sum.inr.injEq] at h
       · exact congrArg Sum.inl (ihF h)
       · exact congrArg Sum.inr (ihG h)
+
+/-! Lemma 3.4.3 -/
+
+def PolynomialFunctor.iterate_embedding (P : PolynomialFunctor) (n : ℕ) :
+    〚P〛.obj^[n] PEmpty ↪ 〚P〛.obj^[n + 1] PEmpty := by
+  induction n with
+  | zero => exact ⟨PEmpty.elim, fun x => PEmpty.elim x⟩
+  | succ n ih =>
+    rw [Function.iterate_succ_apply', Function.iterate_succ_apply']
+    exact P.monotone ih
 
 end Section4
 
