@@ -503,6 +503,26 @@ def PolynomialFunctor.denotation : PolynomialFunctor → Type u ⥤ Type u
       map f := Sum.map (F.denotation.map f) (G.denotation.map f)
     }
 
+def PolynomialFunctor.monotone (P : PolynomialFunctor) {α β : Type u} (f : α ↪ β) :
+    P.denotation.obj α ↪ P.denotation.obj β where
+  toFun := P.denotation.map f
+  inj' := by
+    induction P with
+    | id => exact f.inj'
+    | const A => intro x y h; exact h
+    | prod F G ihF ihG =>
+      intro ⟨a₁, b₁⟩ ⟨a₂, b₂⟩ h
+      simp only [denotation, Prod.map, Prod.mk.injEq] at h ⊢
+      exact ⟨ihF h.1, ihG h.2⟩
+    | coprod F G ihF ihG =>
+      rintro (a₁ | a₂) (b₁ | b₂) h
+      all_goals
+        simp only [denotation, reduceCtorEq,
+          Sum.map_inl, Sum.map_inr,
+          Sum.inl.injEq, Sum.inr.injEq] at h
+      · exact congrArg Sum.inl (ihF h)
+      · exact congrArg Sum.inr (ihG h)
+
 end Section4
 
 end Chapter3
