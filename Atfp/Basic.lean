@@ -537,6 +537,62 @@ def PolynomialFunctor.iterate_embedding (P : PolynomialFunctor) (n : ℕ) :
     rw [Function.iterate_succ_apply', Function.iterate_succ_apply']
     exact P.monotone ih
 
+-- TODO
+
 end Section4
 
+section Section5
+
+#check Functor
+
+variable (F : Type u ⥤ Type u)
+
+structure Inductive where
+  T : Type u
+  into : F.obj T → T
+  out : T → F.obj T
+  fold : (F.obj α → α) → T → α
+
+end Section5
+
 end Chapter3
+
+universe u
+
+variable (α : Type u) [Preorder α]
+
+def WF (α : Type u) [Preorder α] : Prop :=
+  ¬∃ chain : ℕ → α, ∀ n, chain n > chain (n + 1)
+
+def D (pre : Preord) : Preord where
+  carrier := pre.carrier
+  str := {
+    le := Eq
+    lt a b := a = b ∧ b ≠ a
+    le_refl := Eq.refl
+    le_trans _ _ _ := Eq.trans
+  }
+
+def WF2 (α : Type u) [Preorder α] : Prop :=
+  ∀ A : Set α, Inhabited A → ∃ a : A, ∀ b : A, b ≤ a → a ≤ b
+
+theorem iff {α : Type u} [Preorder α] : WF α ↔ WF2 α := by
+  apply Iff.intro
+  · intro wf A ⟨x⟩
+    -- Making classical lemmas explicit
+    apply Classical.byContradiction
+    intro h
+    replace h : ∀ a : A, ∃ b : A, b < a := by
+      intro a
+      have ⟨b, hb⟩ := Classical.not_forall.mp (not_exists.mp h a)
+      use b
+      have ⟨hb₁, hb₂⟩ := Classical.not_imp.mp hb
+      exact lt_of_le_not_ge hb₁ hb₂
+    let build_chain (n : ℕ) : A := n.recOn x (fun _ prev => (h prev).choose)
+    apply wf
+    exact ⟨fun n => (build_chain n).1, fun n => (h (build_chain n)).choose_spec⟩
+  · intro wf ⟨chain, hchain⟩
+    have ⟨⟨min, hmin⟩, hmin_spec⟩ := wf (Set.range chain) ⟨⟨chain 0, Set.mem_range_self 0⟩⟩
+    obtain ⟨i, hi⟩ := Set.mem_range.mp hmin
+    have : chain (i + 1) ≤ min := hi ▸ (hchain i).le
+    exact (hchain i).not_ge (hi.symm ▸ hmin_spec ⟨chain (i + 1), Set.mem_range_self _⟩ this)
