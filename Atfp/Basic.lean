@@ -82,7 +82,8 @@ instance (priority := low) Nat.instPartialOrderDvd : PartialOrder ℕ where
   le_trans _ _ _ := Nat.dvd_trans
   le_antisymm _ _ := Nat.dvd_antisymm
 
-#check Set.instCompleteAtomicBooleanAlgebra.toCompleteLattice.toPartialOrder
+variable (α : Type u)
+#synth PartialOrder (Set α)
 
 instance {X : Type u} : PartialOrder (List X) where
   le w w' := ∃ w₀, w' = w ++ w₀
@@ -361,7 +362,7 @@ def Nat.foldO_str : Nat.foldO f ∘ in' = f ∘ N.map (Nat.foldO f) := by
 
 variable (X Y : Algebra N) (f : X ⟶ Y)
 #check Algebra N
-#check Algebra.instCategory N
+#synth Category (Algebra N)
 #check X.a
 #check X.str
 #check Algebra.Hom
@@ -555,14 +556,17 @@ structure Inductive where
 
 end Section5
 
-end Chapter3
+section Section10
 
 universe u
 
 variable (α : Type u) [Preorder α]
 
-def WF (α : Type u) [Preorder α] : Prop :=
+def WF_desc (α : Type u) [Preorder α] : Prop :=
   ¬∃ chain : ℕ → α, ∀ n, chain n > chain (n + 1)
+
+def WF_asc (α : Type u) [Preorder α] : Prop :=
+  ¬∃ chain : ℕ → α, ∀ n, chain n < chain (n + 1)
 
 def D (pre : Preord) : Preord where
   carrier := pre.carrier
@@ -576,7 +580,7 @@ def D (pre : Preord) : Preord where
 def WF2 (α : Type u) [Preorder α] : Prop :=
   ∀ A : Set α, Inhabited A → ∃ a : A, ∀ b : A, b ≤ a → a ≤ b
 
-theorem iff {α : Type u} [Preorder α] : WF α ↔ WF2 α := by
+theorem iff {α : Type u} [Preorder α] : WF_desc α ↔ WF2 α := by
   apply Iff.intro
   · intro wf A ⟨x⟩
     -- Making classical lemmas explicit
@@ -596,3 +600,66 @@ theorem iff {α : Type u} [Preorder α] : WF α ↔ WF2 α := by
     obtain ⟨i, hi⟩ := Set.mem_range.mp hmin
     have : chain (i + 1) ≤ min := hi ▸ (hchain i).le
     exact (hchain i).not_ge (hi.symm ▸ hmin_spec ⟨chain (i + 1), Set.mem_range_self _⟩ this)
+
+end Section10
+
+end Chapter3
+
+section Chapter4
+
+/-! Definition 4.1.1 -/
+
+variable [inst₁ : SemilatticeSup X] [inst₂ : OrderBot X]
+#check SemilatticeSup
+#check inst₁.toPartialOrder
+#check inst₂.bot
+#check inst₂.bot_le
+#check sup_le_sup
+#check inst₁.le_sup_left
+#check inst₁.le_sup_right
+
+variable (α : Type u)
+#synth SemilatticeSup (Set α)
+
+#synth SemilatticeSup ℕ
+
+#synth SemilatticeSup Bool
+
+/-! Definition 4.1.2 -/
+
+#check SupBotHom
+#check OrderHom
+
+/-! Theorem 4.1.3 -/
+
+theorem semilattice_wfasc_lfp {L : Type u} [SemilatticeSup L] [OrderBot L]
+    (hasc : WF_asc L)
+    (f : L →o L) :
+    ∃ μf : L, Function.IsFixedPt f μf ∧ ∀ x, Function.IsFixedPt f x → μf ≤ x := by
+  have incr : ∀ n, f^[n] ⊥ ≤ f^[n + 1] ⊥ :=
+    fun n => Monotone.iterate f.monotone n bot_le
+  have nsincr : ¬∀ n, f^[n] ⊥ < f^[n + 1] ⊥ := by
+    intro h
+    exact hasc ⟨fun n => f^[n] ⊥, h⟩
+  have ⟨n, hn⟩ : ∃ n, f^[n] ⊥ = f^[n + 1] ⊥ := by
+    by_contra h
+    push_neg at h
+    have : ∀ n, f^[n] ⊥ < f^[n + 1] ⊥ :=
+      fun n => lt_of_le_of_ne (incr n) (h n)
+    exact nsincr this
+  rw [Function.iterate_succ_apply'] at hn
+  refine ⟨f^[n] ⊥, hn.symm, ?minimal⟩
+  intro x hfix
+  have hxconst : ∀ m, f^[m] x = x := by
+    intro m
+    induction m with
+    | zero => rfl
+    | succ m ih =>
+      rw [Function.iterate_succ_apply', ih]
+      exact hfix
+  have : ∀ m, f^[m] ⊥ ≤ f^[m] x :=
+    fun m => Monotone.iterate f.monotone m bot_le
+  simp only [hxconst] at this
+  exact this n
+
+end Chapter4
