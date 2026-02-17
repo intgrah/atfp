@@ -632,6 +632,44 @@ def Inductive.out : I.alg.a → F.obj I.alg.a :=
 
 end Section5
 
+section Section9
+
+/-! Definition 3.9.7 -/
+
+def PolynomialFunctor.ℛ (F : PolynomialFunctor) (R : Rel A B) : Rel (〚F〛.obj A) (〚F〛.obj B) :=
+  match F with
+  | id => R
+  | const A => @Eq A
+  | prod F G => fun (x₁, y₁) (x₂, y₂) => F.ℛ R x₁ x₂ ∧ G.ℛ R y₁ y₂
+  | coprod F G => fun
+    | .inl x, .inl y => F.ℛ R x y
+    | .inr x, .inr y => G.ℛ R x y
+    | _, _ => False
+
+variable (F : PolynomialFunctor)
+
+/-! Lemma 3.9.8 -/
+
+lemma PolynomialFunctor.preserves_eq : F.ℛ (@Eq A) = @Eq (〚F〛.obj A) := by
+  induction F with
+  | id => rfl
+  | const B => rfl
+  | prod F G ihF ihG =>
+    ext ⟨x1, y1⟩ ⟨x2, y2⟩
+    dsimp only [ℛ]
+    rw [ihF, ihG, Prod.mk.injEq]
+  | coprod F G ihF ihG =>
+    ext x y
+    dsimp only [ℛ]
+    cases x <;> cases y
+    · rw [ihF, Sum.inl.injEq]
+    · simp
+    · simp
+    · rw [ihG, Sum.inr.injEq]
+
+
+end Section9
+
 section Section10
 
 universe u
