@@ -696,20 +696,29 @@ section Section10
 
 universe u
 
-variable {X : Type u}
+variable {X Y : Type u} [Preorder X] [Preorder Y]
 
 /-! Definition 3.10.1 -/
 
-variable [inst : Preorder X]
 #check Preorder
-#check inst.le_refl
-#check inst.le_trans
+#check Preorder.le_refl
+#check Preorder.le_trans
 
 def WF_desc (X : Type u) [Preorder X] : Prop :=
   ¬∃ x : ℕ → X, ∀ n, x n > x (n + 1)
 
 def WF_asc (X : Type u) [Preorder X] : Prop :=
   ¬∃ x : ℕ → X, ∀ n, x n < x (n + 1)
+
+/-! Theorem 3.10.2 -/
+
+-- TODO
+theorem WF.induction
+    (hwf : WF_asc X)
+    (P : X → Prop)
+    (hP : ∀ x : X, (∀ y < x, P y) → P x) :
+    ∀ x : X, P x := by
+  sorry
 
 /-! Lemma 3.10.3 -/
 
@@ -741,6 +750,23 @@ instance PolynomialFunctor.preorder : Preorder (〚F〛.obj X) where
       · exact ihF a b c hab hbc
       · exact ihG a b c hab hbc
 
+/-! Lemma 3.10.4 -/
+
+lemma PolynomialFunctor.preserves_monotone (f : X →o Y) : Monotone (〚F〛.map f.toFun) := by
+  induction F with
+  | id =>
+    intro a b hab
+    exact f.monotone hab
+  | const A =>
+    intro a b hab
+    exact hab
+  | prod F G ihF ihG =>
+    intro (a₁, a₂) (b₁, b₂) ⟨hab₁, hab₂⟩
+    exact ⟨ihF hab₁, ihG hab₂⟩
+  | coprod F G ihF ihG =>
+    rintro (a | a) (b | b) hab <;> try contradiction
+    · exact ihF hab
+    · exact ihG hab
 
 def D (pre : Preord) : Preord where
   carrier := pre.carrier
