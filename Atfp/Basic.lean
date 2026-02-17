@@ -14,6 +14,8 @@ import Mathlib.Data.Set.Basic
 import Mathlib.LinearAlgebra.Matrix.Defs
 import Mathlib
 
+open CategoryTheory Limits
+
 section Chapter1
 
 end Chapter1
@@ -135,8 +137,6 @@ end Section2
 
 section Section3
 
-open CategoryTheory
-
 /-! Definition 2.3.1 -/
 
 variable [inst : Category 𝓒] (X Y Z : 𝓒) (f : X ⟶ Y) (g : Y ⟶ Z)
@@ -194,8 +194,6 @@ variable [inst : Category 𝓒] [inst' : Category 𝓓] (F : 𝓒 ⥤ 𝓓)
 end Section2
 
 section Section3
-
-open Limits
 
 /-! Definition 2.3.8 -/
 
@@ -310,7 +308,7 @@ def Nat.mul'' m := Nat.fold' 0 (Nat.add m)
 
 end Section1
 
-open CategoryTheory Endofunctor
+open Endofunctor
 
 section Section2
 
@@ -329,7 +327,55 @@ def N : Type u ⥤ Type u where
     simp [types_comp_apply, Sum.map_map]
     rfl
 
+def D.Obj : ℕ → Type u
+  | 0 => PEmpty
+  | n + 1 => N.obj (D.Obj n)
+
+def D.step {n : ℕ} : D.Obj n → D.Obj (n + 1) := .inr
+
+def D.mapLE {m : ℕ} : {n : ℕ} → m ≤ n → (D.Obj m → D.Obj n)
+  | 0, h => Nat.le_zero.mp h ▸ id
+  | n + 1, h =>
+    if heq : m = n + 1 then
+      heq ▸ id
+    else
+      D.step ∘ D.mapLE (by omega)
+
+private theorem D.mapLE_trans {a b c : ℕ} (hab : a ≤ b) (hbc : b ≤ c) (x : D.Obj a) :
+    D.mapLE (hab.trans hbc) x = D.mapLE hbc (D.mapLE hab x) := by
+  induction c generalizing a b with
+  | zero =>
+    obtain rfl := Nat.le_zero.mp hbc
+    obtain rfl := Nat.le_zero.mp hab
+    rfl
+  | succ k ih =>
+    by_cases hb : b = k + 1
+    · subst hb
+      by_cases ha : a = k + 1
+      · subst ha
+        simp only [D.mapLE, dite_true]; rfl
+      · simp only [D.mapLE, dite_true, dif_neg ha, Function.comp_apply]; rfl
+    · by_cases ha : a = k + 1
+      · omega
+      · simp only [D.mapLE, dif_neg ha, dif_neg hb, Function.comp_apply]
+        exact congrArg D.step (ih hab (by omega) x)
+
+def D : ℕ ⥤ Type u where
+  obj := D.Obj
+  map {m n} f := D.mapLE f.down.down
+  map_id n := by
+    ext x
+    simp only [types_id_apply]
+    cases n with
+    | zero => simp [D.mapLE]
+    | succ n => simp [D.mapLE]
+  map_comp {a b c} f g := by
+    ext x
+    simp only [types_comp_apply]
+    exact D.mapLE_trans f.down.down g.down.down x
+
 def μN := ℕ
+def μN' : Type u := Limits.colimit D
 
 def in' : N.obj μN → μN
   | .inl () => .zero
@@ -486,34 +532,60 @@ end Section3
 
 section Section4
 
+universe u
+
 inductive PolynomialFunctor where
   | id
   | const (A : Type u)
   | prod (F G : PolynomialFunctor)
   | coprod (F G : PolynomialFunctor)
 
+set_option hygiene false in
+notation "〚" F "〛" => PolynomialFunctor.denotation F
+
 def PolynomialFunctor.denotation : PolynomialFunctor → Type u ⥤ Type u
   | id => 𝟭 (Type u)
   | const A => Functor.const (Type u) |>.obj A
   | prod F G => {
-      obj X := F.denotation.obj X × G.denotation.obj X
-      map f := Prod.map (F.denotation.map f) (G.denotation.map f)
+      obj X := 〚F〛.obj X × 〚G〛.obj X
+      map f := Prod.map (〚F〛.map f) (〚G〛.map f)
+      map_id := by
+        intro
+        simp
+        rfl
+      map_comp := by
+        intros
+        simp only [Functor.map_comp]
+        rfl
     }
   | coprod F G => {
-      obj X := F.denotation.obj X ⊕ G.denotation.obj X
-      map f := Sum.map (F.denotation.map f) (G.denotation.map f)
+      obj X := 〚F〛.obj X ⊕ 〚G〛.obj X
+      map f := Sum.map (〚F〛.map f) (〚G〛.map f)
+      map_id := by
+        intro
+        simp only [CategoryTheory.Functor.map_id]
+        ext a
+        cases a with
+        | inl => simp only [Sum.map_inl, types_id_apply]
+        | inr => simp only [Sum.map_inr, types_id_apply]
+      map_comp := by
+        intros
+        ext
+        simp only [Functor.map_comp, types_comp_apply, Sum.map_map]
+        rfl
     }
 
-notation "〚" P "〛" => PolynomialFunctor.denotation P
+def μ (F : PolynomialFunctor.{u}) :=
+  Limits.colimit 〚F〛
 
 /-! Lemma 3.4.2 -/
 
-def PolynomialFunctor.monotone (P : PolynomialFunctor) {α β : Type u} (f : α ↪ β) :
-    〚P〛.obj α ↪ 〚P〛.obj β where
-  toFun := 〚P〛.map f
+def PolynomialFunctor.monotone (F : PolynomialFunctor) (f : α ↪ β) :
+    〚F〛.obj α ↪ 〚F〛.obj β where
+  toFun := 〚F〛.map f
   inj' := by
-    induction P with
-    | id => exact f.inj'
+    induction F with
+    | id => exact f.injective
     | const A => intro x y h; exact h
     | prod F G ihF ihG =>
       intro ⟨a₁, b₁⟩ ⟨a₂, b₂⟩ h
@@ -530,15 +602,13 @@ def PolynomialFunctor.monotone (P : PolynomialFunctor) {α β : Type u} (f : α 
 
 /-! Lemma 3.4.3 -/
 
-def PolynomialFunctor.iterate_embedding (P : PolynomialFunctor) (n : ℕ) :
-    〚P〛.obj^[n] PEmpty ↪ 〚P〛.obj^[n + 1] PEmpty := by
+def PolynomialFunctor.iterate_embedding (F : PolynomialFunctor) (n : ℕ) :
+    〚F〛.obj^[n] PEmpty ↪ 〚F〛.obj^[n + 1] PEmpty := by
   induction n with
   | zero => exact ⟨PEmpty.elim, fun x => PEmpty.elim x⟩
   | succ n ih =>
     rw [Function.iterate_succ_apply', Function.iterate_succ_apply']
-    exact P.monotone ih
-
--- TODO
+    exact F.monotone ih
 
 end Section4
 
@@ -546,13 +616,19 @@ section Section5
 
 #check Functor
 
-variable (F : Type u ⥤ Type u)
+structure Inductive (F : Type u ⥤ Type u) where
+  alg : Algebra F
+  isInitial : IsInitial alg
 
-structure Inductive where
-  T : Type u
-  into : F.obj T → T
-  out : T → F.obj T
-  fold : (F.obj α → α) → T → α
+variable {F : Type u ⥤ Type u} (I : Inductive F)
+
+def Inductive.fold (alg : F.obj α → α) : I.alg.a → α :=
+  (I.isInitial.to ⟨α, alg⟩).f
+
+def Inductive.into : F.obj I.alg.a → I.alg.a := I.alg.str
+
+def Inductive.out : I.alg.a → F.obj I.alg.a :=
+  Algebra.Initial.strInv I.isInitial
 
 end Section5
 
@@ -583,9 +659,7 @@ def WF2 (α : Type u) [Preorder α] : Prop :=
 theorem iff {α : Type u} [Preorder α] : WF_desc α ↔ WF2 α := by
   apply Iff.intro
   · intro wf A ⟨x⟩
-    -- Making classical lemmas explicit
-    apply Classical.byContradiction
-    intro h
+    by_contra h
     replace h : ∀ a : A, ∃ b : A, b < a := by
       intro a
       have ⟨b, hb⟩ := Classical.not_forall.mp (not_exists.mp h a)
@@ -663,3 +737,59 @@ theorem semilattice_wfasc_lfp {L : Type u} [SemilatticeSup L] [OrderBot L]
   exact this n
 
 end Chapter4
+
+section Chapter6
+
+namespace Adamek
+
+variable (F : Type u ⥤ Type u)
+
+def step : ∀ n, F.obj^[n] PEmpty → F.obj^[n + 1] PEmpty
+  | 0 => PEmpty.elim
+  | n + 1 => by
+    rw [Function.iterate_succ_apply', Function.iterate_succ_apply']
+    exact F.map (step n)
+
+def mapLE {m : ℕ} : (n : ℕ) → m ≤ n → (F.obj^[m] PEmpty → F.obj^[n] PEmpty)
+  | 0, h => (Nat.le_zero.mp h) ▸ id
+  | n + 1, h =>
+    if heq : m = n + 1 then heq ▸ id
+    else step F n ∘ mapLE n (by omega)
+
+theorem mapLE_trans {a b c : ℕ} (hab : a ≤ b) (hbc : b ≤ c) (x : F.obj^[a] PEmpty) :
+    mapLE F c (hab.trans hbc) x = mapLE F c hbc (mapLE F b hab x) := by
+  induction c generalizing a b with
+  | zero =>
+    obtain rfl := Nat.le_zero.mp hbc
+    obtain rfl := Nat.le_zero.mp hab
+    rfl
+  | succ k ih =>
+    by_cases hb : b = k + 1
+    · subst hb
+      by_cases ha : a = k + 1
+      · subst ha; simp only [mapLE, dite_true]; rfl
+      · simp only [mapLE, dite_true, dif_neg ha, Function.comp_apply]; rfl
+    · by_cases ha : a = k + 1
+      · omega
+      · simp only [mapLE, dif_neg ha, dif_neg hb, Function.comp_apply]
+        exact congrArg (step F k) (ih hab (by omega) x)
+
+def chain : ℕ ⥤ Type u where
+  obj n := F.obj^[n] PEmpty
+  map f := mapLE F _ f.down.down
+  map_id n := by
+    ext x
+    simp only [types_id_apply]
+    cases n with
+    | zero => simp [mapLE]
+    | succ n => simp [mapLE]
+  map_comp {a b c} f g := by
+    ext x
+    simp only [types_comp_apply]
+    exact mapLE_trans F f.down.down g.down.down x
+
+def μ := colimit (chain F)
+
+end Adamek
+
+end Chapter6
