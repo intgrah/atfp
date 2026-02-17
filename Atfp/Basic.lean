@@ -1,18 +1,18 @@
-import Mathlib.Algebra.Group.Basic
-import Mathlib.Algebra.Group.Hom.Basic
-import Mathlib.GroupTheory.Coprod.Basic
+import Mathlib.Algebra.Category.Grp.Basic
+import Mathlib.Algebra.Category.MonCat.Basic
+import Mathlib.Algebra.Category.MonCat.Limits
 import Mathlib.CategoryTheory.Category.Basic
-import Mathlib.CategoryTheory.ConcreteCategory.Bundled
+import Mathlib.CategoryTheory.Category.Pointed
+import Mathlib.CategoryTheory.Category.RelCat
 import Mathlib.CategoryTheory.Endofunctor.Algebra
-import Mathlib.CategoryTheory.Functor.Basic
-import Mathlib.CategoryTheory.Functor.Category
+import Mathlib.CategoryTheory.Limits.Shapes.Terminal
+import Mathlib.CategoryTheory.Limits.Types.Coproducts
+import Mathlib.CategoryTheory.Limits.Types.Products
+import Mathlib.CategoryTheory.Monoidal.Closed.Cartesian
 import Mathlib.CategoryTheory.Types.Basic
 import Mathlib.Data.Matrix.Basic
-import Mathlib.Data.PFunctor.Univariate.Basic
-import Mathlib.Data.Real.Basic
-import Mathlib.Data.Set.Basic
-import Mathlib.LinearAlgebra.Matrix.Defs
-import Mathlib
+import Mathlib.GroupTheory.Coprod.Basic
+import Mathlib.Order.Category.PartOrd
 
 open CategoryTheory Limits
 
