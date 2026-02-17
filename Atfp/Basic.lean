@@ -681,16 +681,14 @@ lemma PolynomialFunctor.preserves_function {A B X Y : Type u}
     (F.ℛ R ⇒ F.ℛ S) (〚F〛.map f) (〚F〛.map g) := by
   induction F with
   | id => exact h
-  | const C => intro x y hxy; exact hxy
+  | const C => intro a b hab; exact hab
   | prod F G ihF ihG =>
-    intro ⟨x₁, y₁⟩ ⟨x₂, y₂⟩ ⟨h₁, h₂⟩
-    exact ⟨ihF x₁ x₂ h₁, ihG y₁ y₂ h₂⟩
+    intro (a₁, a₂) (b₁, b₂) ⟨h₁, h₂⟩
+    exact ⟨ihF a₁ b₁ h₁, ihG a₂ b₂ h₂⟩
   | coprod F G ihF ihG =>
-    rintro (x | x) (y | y) hxy
-    · exact ihF _ _ hxy
-    · contradiction
-    · contradiction
-    · exact ihG _ _ hxy
+    rintro (a | a) (b | b) hab <;> try contradiction
+    · exact ihF a b hab
+    · exact ihG a b hab
 
 end Section9
 
@@ -698,13 +696,51 @@ section Section10
 
 universe u
 
-variable (α : Type u) [Preorder α]
+variable {X : Type u}
 
-def WF_desc (α : Type u) [Preorder α] : Prop :=
-  ¬∃ chain : ℕ → α, ∀ n, chain n > chain (n + 1)
+/-! Definition 3.10.1 -/
 
-def WF_asc (α : Type u) [Preorder α] : Prop :=
-  ¬∃ chain : ℕ → α, ∀ n, chain n < chain (n + 1)
+variable [inst : Preorder X]
+#check Preorder
+#check inst.le_refl
+#check inst.le_trans
+
+def WF_desc (X : Type u) [Preorder X] : Prop :=
+  ¬∃ x : ℕ → X, ∀ n, x n > x (n + 1)
+
+def WF_asc (X : Type u) [Preorder X] : Prop :=
+  ¬∃ x : ℕ → X, ∀ n, x n < x (n + 1)
+
+/-! Lemma 3.10.3 -/
+
+instance PolynomialFunctor.preorder : Preorder (〚F〛.obj X) where
+  le := F.ℛ (· ≤ ·)
+  le_refl := by
+    induction F with
+    | id => intro a; exact le_rfl
+    | const A => intro a; rfl
+    | prod F G ihF ihG =>
+      intro (a₁, a₂)
+      simp_all [ℛ]
+    | coprod F G ihF ihG =>
+      rintro (a | a) <;>
+      simp_all [ℛ]
+  le_trans := by
+    induction F with
+    | id =>
+      intro a b c hab hbc
+      exact hab.trans hbc
+    | const A =>
+      intro a b c hab hbc
+      exact hab.trans hbc
+    | prod F G ihF ihG =>
+      intro (a₁, a₂) (b₁, b₂) (c₁, c₂) ⟨hab₁, hab₂⟩ ⟨hbc₁, hbc₂⟩
+      exact ⟨ihF a₁ b₁ c₁ hab₁ hbc₁, ihG a₂ b₂ c₂ hab₂ hbc₂⟩
+    | coprod F G ihF ihG =>
+      rintro (a | a) (b | b) (c | c) hab hbc <;> try contradiction
+      · exact ihF a b c hab hbc
+      · exact ihG a b c hab hbc
+
 
 def D (pre : Preord) : Preord where
   carrier := pre.carrier
@@ -715,10 +751,10 @@ def D (pre : Preord) : Preord where
     le_trans _ _ _ := Eq.trans
   }
 
-def WF2 (α : Type u) [Preorder α] : Prop :=
-  ∀ A : Set α, Inhabited A → ∃ a : A, ∀ b : A, b ≤ a → a ≤ b
+def WF2 (X : Type u) [Preorder X] : Prop :=
+  ∀ A : Set X, Inhabited A → ∃ a : A, ∀ b : A, b ≤ a → a ≤ b
 
-theorem iff {α : Type u} [Preorder α] : WF_desc α ↔ WF2 α := by
+theorem iff {X : Type u} [Preorder X] : WF_desc X ↔ WF2 X := by
   apply Iff.intro
   · intro wf A ⟨x⟩
     by_contra h
