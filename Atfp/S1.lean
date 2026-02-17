@@ -59,7 +59,7 @@ def PartOrd.isTerminal : IsTerminal PartOrd.terminal :=
 
 def PartOrd.isInitial : IsInitial PartOrd.initial :=
   IsInitial.ofUniqueHom
-    (fun _ => PartOrd.ofHom ⟨fun x => x.elim, fun x => x.elim⟩)
+    (fun _ => PartOrd.ofHom ⟨PEmpty.elim, fun x => x.elim⟩)
     (fun _ _ => PartOrd.ext fun x => x.elim)
 
 instance : HasTerminal PartOrd :=
