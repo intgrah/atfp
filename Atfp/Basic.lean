@@ -683,12 +683,10 @@ lemma PolynomialFunctor.preserves_function {A B X Y : Type u}
   | id => exact h
   | const C => intro x y hxy; exact hxy
   | prod F G ihF ihG =>
-    intro ⟨x1, y1⟩ ⟨x2, y2⟩ ⟨h1, h2⟩
-    exact ⟨ihF x1 x2 h1, ihG y1 y2 h2⟩
+    intro ⟨x₁, y₁⟩ ⟨x₂, y₂⟩ ⟨h₁, h₂⟩
+    exact ⟨ihF x₁ x₂ h₁, ihG y₁ y₂ h₂⟩
   | coprod F G ihF ihG =>
-    intro x y hxy
-    unfold ℛ at hxy ⊢
-    cases x <;> cases y
+    rintro (x | x) (y | y) hxy
     · exact ihF _ _ hxy
     · contradiction
     · contradiction
