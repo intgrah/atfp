@@ -646,11 +646,17 @@ def PolynomialFunctor.ℛ (F : PolynomialFunctor) (R : Rel A B) : Rel (〚F〛.o
     | .inr x, .inr y => G.ℛ R x y
     | _, _ => False
 
+def Rel.function (R : Rel A X) (S : Rel B Y) : Rel (A → B) (X → Y) :=
+  fun f g => ∀ a x, R a x → S (f a) (g x)
+
+infixr:26 " ⇒ " => Rel.function
+
 variable (F : PolynomialFunctor)
 
 /-! Lemma 3.9.8 -/
 
-lemma PolynomialFunctor.preserves_eq : F.ℛ (@Eq A) = @Eq (〚F〛.obj A) := by
+lemma PolynomialFunctor.preserves_eq {A : Type u} :
+    F.ℛ (@Eq A) = @Eq (〚F〛.obj A) := by
   induction F with
   | id => rfl
   | const B => rfl
@@ -667,6 +673,26 @@ lemma PolynomialFunctor.preserves_eq : F.ℛ (@Eq A) = @Eq (〚F〛.obj A) := by
     · simp
     · rw [ihG, Sum.inr.injEq]
 
+/-! Lemma 3.9.9 -/
+
+lemma PolynomialFunctor.preserves_function {A B X Y : Type u}
+    {R : Rel A X} {S : Rel B Y} {f : A → B} {g : X → Y}
+    (h : (R ⇒ S) f g) :
+    (F.ℛ R ⇒ F.ℛ S) (〚F〛.map f) (〚F〛.map g) := by
+  induction F with
+  | id => exact h
+  | const C => intro x y hxy; exact hxy
+  | prod F G ihF ihG =>
+    intro ⟨x1, y1⟩ ⟨x2, y2⟩ ⟨h1, h2⟩
+    exact ⟨ihF x1 x2 h1, ihG y1 y2 h2⟩
+  | coprod F G ihF ihG =>
+    intro x y hxy
+    unfold ℛ at hxy ⊢
+    cases x <;> cases y
+    · exact ihF _ _ hxy
+    · contradiction
+    · contradiction
+    · exact ihG _ _ hxy
 
 end Section9
 
