@@ -730,10 +730,11 @@ instance PolynomialFunctor.preorder : Preorder (〚F〛.obj X) where
     | const A => intro a; rfl
     | prod F G ihF ihG =>
       intro (a₁, a₂)
-      simp_all [ℛ]
+      exact ⟨ihF a₁, ihG a₂⟩
     | coprod F G ihF ihG =>
-      rintro (a | a) <;>
-      simp_all [ℛ]
+      rintro (a | a)
+      · exact ihF a
+      · exact ihG a
   le_trans := by
     induction F with
     | id =>
