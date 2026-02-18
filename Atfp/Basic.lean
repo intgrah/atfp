@@ -1187,7 +1187,7 @@ inductive Tm : Type u
   | bot (L : LatTy)
   | sup (L : LatTy) (e₁ e₂ : Tm)
   | for (e₁ e₂ : Tm)
-  | singleton (e : Tm)
+  | one (e : Tm)
   | discrete (e : Tm)
   | discrete_elim (e₁ e₂ : Tm)
   | fix (L : LatTy) (e : Tm)
@@ -1226,7 +1226,7 @@ notation "π₁" => Tm.fst
 notation "π₂" => Tm.snd
 notation "ι₁" => Tm.inl
 notation "ι₂" => Tm.inr
-instance : Singleton Tm Tm := ⟨Tm.singleton⟩
+instance : Singleton Tm Tm := ⟨Tm.one⟩
 notation "[" e "]ᵈ" => Tm.discrete e
 
 notation "[" Γ "]ᵈ" => Ctx.disc Γ
@@ -1280,7 +1280,7 @@ inductive HasType : Ctx → Tm → Ty → Type u
     (Γ ⊢ .discrete_elim e₁ e₂ : C)
   | bot_intro {Γ} L :
     (Γ ⊢ .bot L : L)
-  | singleton_intro {Γ} e (T : FinTy) :
+  | one_intro {Γ} e (T : FinTy) :
     ([Γ]ᵈ ⊢ e : T.toTy) →
     (Γ ⊢ {e} : 𝒫 T)
   | sup_intro {Γ} e₁ e₂ (L : LatTy) :
@@ -1468,7 +1468,7 @@ def HasType.denotation {Γ e A} : (Γ ⊢ e : A) → (〚Γ〛 ⟶ 〚A〛)
     let g := 〚show ((.D, A) :: Γ) ⊢ e₂ : C from he₂〛
     prod_lift (𝟙 〚Γ〛) f ≫ g
   | bot_intro L => PartOrd.terminal.from 〚Γ〛 ≫ LatTy.bot L
-  | singleton_intro e T he => drop Γ ≫ δ [Γ]ᵈ ≫ [〚he〛]ᵈ ≫ (FinTy.toTy_denotation ▸ one)
+  | one_intro e T he => drop Γ ≫ δ [Γ]ᵈ ≫ [〚he〛]ᵈ ≫ (FinTy.toTy_denotation ▸ one)
   | sup_intro e₁ e₂ L he₁ he₂ =>
     let f := 〚show Γ ⊢ e₁ : L from he₁〛
     let g := 〚show Γ ⊢ e₂ : L from he₂〛
