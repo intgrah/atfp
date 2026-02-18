@@ -880,47 +880,53 @@ variable {A B C D : PartOrd}
 
 /-! Definition 4.3.1 -/
 
-def PartOrd.terminal : PartOrd := PartOrd.of PUnit
+namespace PartOrd
 
-def PartOrd.isTerminal : IsTerminal PartOrd.terminal :=
+def terminal : PartOrd := of PUnit
+
+def isTerminal : IsTerminal terminal :=
   IsTerminal.ofUniqueHom
-    (fun _ => PartOrd.ofHom ⟨fun _ => ⟨⟩, fun _ _ _ => le_rfl⟩)
-    (fun _ _ => PartOrd.ext fun _ => rfl)
+    (fun _ => ofHom ⟨fun _ => ⟨⟩, fun _ _ _ => le_rfl⟩)
+    (fun _ _ => ext fun _ => rfl)
 
-def PartOrd.terminal.from (X : PartOrd) : X ⟶ terminal :=
-  PartOrd.ofHom ⟨fun _ => ⟨⟩, fun _ _ _ => le_rfl⟩
+def terminal.from (X : PartOrd) : X ⟶ terminal :=
+  ofHom ⟨fun _ => ⟨⟩, fun _ _ _ => le_rfl⟩
 
-def PartOrd.terminalCone : LimitCone (Functor.empty PartOrd) where
-  cone := asEmptyCone PartOrd.terminal
-  isLimit := PartOrd.isTerminal
+def terminalCone : LimitCone (Functor.empty PartOrd) where
+  cone := asEmptyCone terminal
+  isLimit := isTerminal
 
-def PartOrd.prod (A B : PartOrd.{u}) : PartOrd := PartOrd.of (A × B)
+def prod (A B : PartOrd.{u}) : PartOrd := of (A × B)
 
-def PartOrd.fst : A.prod B ⟶ A :=
-  PartOrd.ofHom ⟨Prod.fst, fun _ _ h => h.1⟩
+def fst : A.prod B ⟶ A :=
+  ofHom ⟨Prod.fst, fun _ _ h => h.1⟩
 
-def PartOrd.snd : A.prod B ⟶ B :=
-  PartOrd.ofHom ⟨Prod.snd, fun _ _ h => h.2⟩
+def snd : A.prod B ⟶ B :=
+  ofHom ⟨Prod.snd, fun _ _ h => h.2⟩
 
-def PartOrd.prod.lift (f : C ⟶ A) (g : C ⟶ B) : C ⟶ A.prod B :=
-  PartOrd.ofHom {
+def prod_lift (f : C ⟶ A) (g : C ⟶ B) : C ⟶ A.prod B :=
+  ofHom {
     toFun x := (f x, g x)
     monotone' _ _ h := ⟨f.hom.monotone h, g.hom.monotone h⟩
   }
 
-def PartOrd.tensor_exchange :
+def tensor_exchange :
     (A.prod B).prod (C.prod D) ≅ (A.prod C).prod (B.prod D) where
-  hom := PartOrd.ofHom
-    ⟨fun ((a, b), (c, d)) => ((a, c), (b, d)), fun _ _ ⟨⟨ha, hb⟩, ⟨hc, hd⟩⟩ => ⟨⟨ha, hc⟩, ⟨hb, hd⟩⟩⟩
-  inv := PartOrd.ofHom
-    ⟨fun ((a, c), (b, d)) => ((a, b), (c, d)), fun _ _ ⟨⟨ha, hc⟩, ⟨hb, hd⟩⟩ => ⟨⟨ha, hb⟩, ⟨hc, hd⟩⟩⟩
+  hom := ofHom {
+    toFun := fun ((a, b), (c, d)) => ((a, c), (b, d))
+    monotone' := fun _ _ ⟨⟨ha, hb⟩, ⟨hc, hd⟩⟩ => ⟨⟨ha, hc⟩, ⟨hb, hd⟩⟩
+  }
+  inv := ofHom {
+    toFun := fun ((a, c), (b, d)) => ((a, b), (c, d))
+    monotone' := fun _ _ ⟨⟨ha, hc⟩, ⟨hb, hd⟩⟩ => ⟨⟨ha, hb⟩, ⟨hc, hd⟩⟩
+  }
   hom_inv_id := rfl
   inv_hom_id := rfl
 
-def PartOrd.prod.isLimit :
-    IsLimit (BinaryFan.mk (P := A.prod B) PartOrd.fst PartOrd.snd) :=
+def prod_isLimit :
+    IsLimit (BinaryFan.mk (P := A.prod B) fst snd) :=
   BinaryFan.isLimitMk
-    (fun s => PartOrd.prod.lift s.fst s.snd)
+    (fun s => prod_lift s.fst s.snd)
     (fun s => rfl)
     (fun s => rfl)
     (fun s m h₁ h₂ => by
@@ -930,33 +936,33 @@ def PartOrd.prod.isLimit :
       · exact congrArg (·.hom x) h₂
     )
 
-def PartOrd.binaryProductCone (A B : PartOrd) : LimitCone (pair A B) where
+def binaryProductCone (A B : PartOrd) : LimitCone (pair A B) where
   cone := BinaryFan.mk fst snd
-  isLimit := prod.isLimit
+  isLimit := prod_isLimit
 
 instance : CartesianMonoidalCategory PartOrd :=
-  CartesianMonoidalCategory.ofChosenFiniteProducts PartOrd.terminalCone PartOrd.binaryProductCone
+  CartesianMonoidalCategory.ofChosenFiniteProducts terminalCone binaryProductCone
 
-def PartOrd.initial : PartOrd := PartOrd.of PEmpty
+def initial : PartOrd := of PEmpty
 
-def PartOrd.isInitial : IsInitial PartOrd.initial :=
+def isInitial : IsInitial initial :=
   IsInitial.ofUniqueHom
-    (fun _ => PartOrd.ofHom ⟨PEmpty.elim, fun x => x.elim⟩)
-    (fun _ _ => PartOrd.ext fun x => x.elim)
+    (fun _ => ofHom ⟨PEmpty.elim, fun x => x.elim⟩)
+    (fun _ _ => ext fun x => x.elim)
 
 instance : HasInitial PartOrd :=
-  IsInitial.hasInitial PartOrd.isInitial
+  IsInitial.hasInitial isInitial
 
-def PartOrd.coprod (A B : PartOrd.{u}) : PartOrd := PartOrd.of (A ⊕ B)
+def coprod (A B : PartOrd.{u}) : PartOrd := of (A ⊕ B)
 
-def PartOrd.inl : A ⟶ A.coprod B :=
-  PartOrd.ofHom ⟨Sum.inl, fun _ _ h => Sum.LiftRel.inl h⟩
+def inl : A ⟶ A.coprod B :=
+  ofHom ⟨Sum.inl, fun _ _ => Sum.LiftRel.inl⟩
 
-def PartOrd.inr : B ⟶ A.coprod B :=
-  PartOrd.ofHom ⟨Sum.inr, fun _ _ h => Sum.LiftRel.inr h⟩
+def inr : B ⟶ A.coprod B :=
+  ofHom ⟨Sum.inr, fun _ _ => Sum.LiftRel.inr⟩
 
-def PartOrd.coprod.desc (f : A ⟶ C) (g : B ⟶ C) : A.coprod B ⟶ C :=
-  PartOrd.ofHom {
+def coprod_desc (f : A ⟶ C) (g : B ⟶ C) : A.coprod B ⟶ C :=
+  ofHom {
     toFun := Sum.elim f g
     monotone' := by
       rintro (a | b) (a' | b') (hab | hab)
@@ -964,10 +970,10 @@ def PartOrd.coprod.desc (f : A ⟶ C) (g : B ⟶ C) : A.coprod B ⟶ C :=
       · exact g.hom.monotone hab
   }
 
-def PartOrd.coprod.isColimit :
+def coprod.isColimit :
     IsColimit (BinaryCofan.mk (P := A.coprod B) PartOrd.inl PartOrd.inr) :=
   BinaryCofan.isColimitMk
-    (fun s => coprod.desc s.inl s.inr)
+    (fun s => coprod_desc s.inl s.inr)
     (fun _ => rfl)
     (fun _ => rfl)
     (fun s m h₁ h₂ => by
@@ -976,8 +982,8 @@ def PartOrd.coprod.isColimit :
       · exact congrArg (·.hom b) h₂
     )
 
-def PartOrd.dist {A B C : PartOrd.{u}} : A.prod (B.coprod C) ≅ (A.prod B).coprod (A.prod C) where
-  hom := PartOrd.ofHom {
+def dist {A B C : PartOrd.{u}} : A.prod (B.coprod C) ≅ (A.prod B).coprod (A.prod C) where
+  hom := ofHom {
     toFun
       | (a, .inl b) => .inl (a, b)
       | (a, .inr c) => .inr (a, c)
@@ -986,7 +992,7 @@ def PartOrd.dist {A B C : PartOrd.{u}} : A.prod (B.coprod C) ≅ (A.prod B).copr
       · exact Sum.LiftRel.inl ⟨ha, hb⟩
       · exact Sum.LiftRel.inr ⟨ha, hc⟩
   }
-  inv := PartOrd.ofHom {
+  inv := ofHom {
     toFun
       | .inl (a, b) => (a, .inl b)
       | .inr (a, c) => (a, .inr c)
@@ -1002,68 +1008,68 @@ instance (A B : PartOrd) : PartialOrder (A ⟶ B) where
   le f g := ∀ x, f x ≤ g x
   le_refl _ _ := le_rfl
   le_trans _ _ _ h₁ h₂ x := (h₁ x).trans (h₂ x)
-  le_antisymm f g h₁ h₂ := PartOrd.ext fun x => le_antisymm (h₁ x) (h₂ x)
+  le_antisymm f g h₁ h₂ := ext fun x => le_antisymm (h₁ x) (h₂ x)
 
 instance : CartesianMonoidalCategory PartOrd :=
-  CartesianMonoidalCategory.ofChosenFiniteProducts PartOrd.terminalCone PartOrd.binaryProductCone
+  CartesianMonoidalCategory.ofChosenFiniteProducts terminalCone binaryProductCone
 
-def PartOrd.expFunctor (A : PartOrd.{u}) : PartOrd.{u} ⥤ PartOrd.{u} where
-  obj B := PartOrd.of (A ⟶ B)
-  map f := PartOrd.ofHom {
+def expFunctor (A : PartOrd) : PartOrd ⥤ PartOrd where
+  obj B := of (A ⟶ B)
+  map f := ofHom {
     toFun g := g ≫ f
     monotone' _ _ h x := f.hom.monotone (h x)
   }
 
-def PartOrd.ev : A ⊗ PartOrd.of (A ⟶ B) ⟶ B :=
-  PartOrd.ofHom {
+def ev : A ⊗ of (A ⟶ B) ⟶ B :=
+  ofHom {
     toFun := fun (a, f) => f a
     monotone' := fun (_, f₁) (a₂, _) ⟨ha, hf⟩ =>
       (f₁.hom.monotone ha).trans (hf a₂)
   }
 
-def PartOrd.ev' : PartOrd.of (A ⟶ B) ⊗ A ⟶ B :=
-  PartOrd.ofHom {
+def ev' : of (A ⟶ B) ⊗ A ⟶ B :=
+  ofHom {
     toFun := fun (f, a) => f a
     monotone' := fun (f₁, _) (_, a₂) ⟨hf, ha⟩ =>
       (f₁.hom.monotone ha).trans (hf a₂)
   }
 
-def PartOrd.coev : B ⟶ PartOrd.of (A ⟶ A.prod B) :=
-  PartOrd.ofHom {
-    toFun b := PartOrd.ofHom {
+def coev : B ⟶ of (A ⟶ A.prod B) :=
+  ofHom {
+    toFun b := ofHom {
       toFun a := (a, b)
       monotone' _ _ ha := ⟨ha, le_rfl⟩
     }
     monotone' _ _ hb := fun _ => ⟨le_rfl, hb⟩
   }
 
-def PartOrd.tensorProductAdjunction (A : PartOrd.{u}) :
-    tensorLeft A ⊣ PartOrd.expFunctor A :=
+def tensorProductAdjunction (A : PartOrd.{u}) :
+    tensorLeft A ⊣ expFunctor A :=
   Adjunction.mkOfUnitCounit {
-    unit.app _ := PartOrd.coev
-    counit.app _ := PartOrd.ev
+    unit.app _ := coev
+    counit.app _ := ev
   }
 
-def PartOrd.curry (f : A ⊗ B ⟶ C) : B ⟶ PartOrd.of (A ⟶ C) :=
-  PartOrd.ofHom {
-    toFun b := PartOrd.ofHom {
+def curry (f : A ⊗ B ⟶ C) : B ⟶ of (A ⟶ C) :=
+  ofHom {
+    toFun b := ofHom {
       toFun a := f (a, b)
       monotone' := fun _ _ ha => f.hom.monotone ⟨ha, le_rfl⟩
     }
     monotone' := fun _ _ hb _ => f.hom.monotone ⟨le_rfl, hb⟩
   }
 
-def PartOrd.curry_left (f : A ⊗ B ⟶ C) : A ⟶ PartOrd.of (B ⟶ C) :=
-  PartOrd.ofHom {
-    toFun a := PartOrd.ofHom {
+def curry_left (f : A ⊗ B ⟶ C) : A ⟶ of (B ⟶ C) :=
+  ofHom {
+    toFun a := ofHom {
       toFun b := f (a, b)
       monotone' := fun _ _ hb => f.hom.monotone ⟨le_rfl, hb⟩
     }
     monotone' := fun _ _ ha _ => f.hom.monotone ⟨ha, le_rfl⟩
   }
 
-def PartOrd.uncurry (f : B ⟶ PartOrd.of (A ⟶ C)) : A ⊗ B ⟶ C :=
-  PartOrd.ofHom {
+def uncurry (f : B ⟶ of (A ⟶ C)) : A ⊗ B ⟶ C :=
+  ofHom {
     toFun := fun (a, b) => f b a
     monotone' := fun (_, b₁) (a₂, _) ⟨ha, hb⟩ =>
       ((f b₁).hom.monotone ha).trans (f.hom.monotone hb a₂)
@@ -1072,7 +1078,7 @@ def PartOrd.uncurry (f : B ⟶ PartOrd.of (A ⟶ C)) : A ⊗ B ⟶ C :=
 instance : CartesianClosed PartOrd.{u} :=
   CartesianClosed.mk _ fun A => Exponentiable.mk _ _ (PartOrd.tensorProductAdjunction A)
 
-def PartOrd.Disc (X : PartOrd) : PartOrd where
+def Disc (X : PartOrd) : PartOrd where
   carrier := X
   str.le := Eq
   str.lt a b := a = b ∧ b ≠ a
@@ -1080,30 +1086,34 @@ def PartOrd.Disc (X : PartOrd) : PartOrd where
   str.le_trans _ _ _ := Eq.trans
   str.le_antisymm _ _ h _ := h
 
-notation "[" X "]ᵈ" => PartOrd.Disc X
+namespace Disc
 
-def PartOrd.Disc.comonad : Comonad PartOrd where
+notation "[" X "]ᵈ" => Disc X
+
+def comonad : Comonad PartOrd where
   obj := Disc
   map {X Y} f :=
-    @PartOrd.ofHom [X]ᵈ [Y]ᵈ _ _ ⟨f, fun _ _ => congrArg f⟩
-  ε.app X := @PartOrd.ofHom [X]ᵈ X _ _ ⟨id, fun _ _ h => by subst h; exact le_rfl⟩
-  δ.app X := @PartOrd.ofHom [X]ᵈ [[X]ᵈ]ᵈ _ _ ⟨id, fun _ _ h => h⟩
+    @ofHom [X]ᵈ [Y]ᵈ _ _ ⟨f, fun _ _ => congrArg f⟩
+  ε.app X := @ofHom [X]ᵈ X _ _ ⟨id, fun _ _ h => by subst h; exact le_rfl⟩
+  δ.app X := @ofHom [X]ᵈ [[X]ᵈ]ᵈ _ _ ⟨id, fun _ _ h => h⟩
 
-notation "[" f "]ᵈ" => PartOrd.Disc.comonad.map f
+notation "[" f "]ᵈ" => Disc.comonad.map f
 
-def PartOrd.D.iso_terminal : [terminal]ᵈ ≅ terminal where
-  hom := @PartOrd.ofHom [terminal]ᵈ terminal _ _ ⟨id, fun _ _ _ => le_rfl⟩
-  inv := @PartOrd.ofHom terminal [terminal]ᵈ _ _ ⟨id, fun _ _ _ => rfl⟩
+def iso_terminal : [terminal]ᵈ ≅ terminal where
+  hom := @ofHom [terminal]ᵈ terminal _ _ ⟨id, fun _ _ _ => le_rfl⟩
+  inv := @ofHom terminal [terminal]ᵈ _ _ ⟨id, fun _ _ _ => rfl⟩
   hom_inv_id := rfl
   inv_hom_id := rfl
 
-def PartOrd.D.iso_prod (X Y : PartOrd) : [X.prod Y]ᵈ ≅ ([X]ᵈ.prod [Y]ᵈ) where
-  hom := @PartOrd.ofHom [X.prod Y]ᵈ ([X]ᵈ.prod [Y]ᵈ) _ _ ⟨id, fun _ _ h => (Prod.ext_iff.mp h)⟩
-  inv := @PartOrd.ofHom ([X]ᵈ.prod [Y]ᵈ) [X.prod Y]ᵈ _ _ ⟨id, fun _ _ h => (Prod.ext_iff.mpr h)⟩
+def iso_prod (X Y : PartOrd) : [X.prod Y]ᵈ ≅ ([X]ᵈ.prod [Y]ᵈ) where
+  hom := @ofHom [X.prod Y]ᵈ ([X]ᵈ.prod [Y]ᵈ) _ _ ⟨id, fun _ _ h => (Prod.ext_iff.mp h)⟩
+  inv := @ofHom ([X]ᵈ.prod [Y]ᵈ) [X.prod Y]ᵈ _ _ ⟨id, fun _ _ h => (Prod.ext_iff.mpr h)⟩
   hom_inv_id := rfl
   inv_hom_id := rfl
 
-def PartOrd.𝒫 : PartOrd ⥤ SemilatSupCat where
+end Disc
+
+def powerset : PartOrd ⥤ SemilatSupCat where
   obj X := SemilatSupCat.of (Set X)
   map {X Y} f := {
     toFun s := f '' s
@@ -1129,11 +1139,13 @@ def U.bot (L : SemilatSupCat) : PartOrd.terminal ⟶ U.obj L :=
 def U.sup (L : SemilatSupCat) : (U.obj L).prod (U.obj L) ⟶ U.obj L :=
   PartOrd.ofHom ⟨fun (x, y) => x ⊔ y, fun _ _ ⟨hx, hy⟩ => sup_le_sup hx hy⟩
 
-def PartOrd.one {X : PartOrd} : [X]ᵈ ⟶ U.obj (𝒫.obj X) :=
+def one {X : PartOrd} : [X]ᵈ ⟶ U.obj (powerset.obj X) :=
   PartOrd.ofHom (X := [X]ᵈ) {
     toFun x := ({x} : Set X)
     monotone' := by intro _ _ rfl; rfl
   }
+
+end PartOrd
 
 end Section3
 
@@ -1292,7 +1304,7 @@ def FinTy.denotation : FinTy.{u} → PartOrd.{u}
   | 1 => 𝟙_ PartOrd
   | prod T₁ T₂ => 〚T₁〛 ⊗ 〚T₂〛
   | coprod T₁ T₂ => 〚T₁〛.coprod 〚T₂〛
-  | powerset T => U.obj (𝒫.obj 〚T〛)
+  | powerset T => U.obj (PartOrd.powerset.obj 〚T〛)
   | discrete T => [〚T〛]ᵈ
 
 set_option hygiene false in
@@ -1303,7 +1315,7 @@ def Ty.denotation : Ty.{u} → PartOrd.{u}
   | prod A B => 〚A〛 ⊗ 〚B〛
   | arr A B => 〚A〛 ⟹ 〚B〛
   | coprod A B => 〚A〛.coprod 〚B〛
-  | powerset T => U.obj (𝒫.obj 〚T〛)
+  | powerset T => U.obj (PartOrd.powerset.obj 〚T〛)
   | discrete A => [〚A〛]ᵈ
 
 lemma FinTy.toTy_denotation {T : FinTy} : 〚T〛 = 〚T.toTy〛 := by
@@ -1353,7 +1365,7 @@ def LatTy.bot (L : LatTy) : PartOrd.terminal ⟶ 〚L〛 :=
 def LatTy.sup : ∀ L : LatTy, 〚L〛 ⊗ 〚L〛 ⟶ 〚L〛
   | .unit => terminal.from _
   | .prod L₁ L₂ => tensor_exchange.hom ≫ (sup L₁ ⊗ₘ sup L₂)
-  | .powerset T => U.sup (𝒫.obj 〚T〛)
+  | .powerset T => U.sup (PartOrd.powerset.obj 〚T〛)
 
 def LatTy.comprehension {A : PartOrd} {X : FinTy} (L : LatTy) (f : A ⊗ [〚X〛]ᵈ ⟶ 〚L〛) :
     A ⊗ 〚𝒫 X〛 ⟶ 〚L〛 :=
@@ -1419,9 +1431,9 @@ lemma Ctx.disc.idem {Γ : Ctx} : [[Γ]ᵈ]ᵈ = [Γ]ᵈ := by
 
 def Ctx.δ (Δ : Ctx) (h : [Δ]ᵈ = Δ := by exact Ctx.disc.idem) : 〚Δ〛 ⟶ [〚Δ〛]ᵈ :=
   match Δ with
-  | [] => D.iso_terminal.inv
+  | [] => Disc.iso_terminal.inv
   | (.D, A) :: Δ =>
-    (Ctx.δ Δ (congrArg List.tail h) ⊗ₘ Disc.comonad.δ.app 〚A〛) ≫ (D.iso_prod 〚Δ〛 [〚A〛]ᵈ).inv
+    (Ctx.δ Δ (congrArg List.tail h) ⊗ₘ Disc.comonad.δ.app 〚A〛) ≫ (Disc.iso_prod 〚Δ〛 [〚A〛]ᵈ).inv
   | (.none, _) :: Δ => by simpa using List.filter_eq_self.mp h
 
 set_option hygiene false in
@@ -1431,40 +1443,40 @@ open Ctx (drop δ) in
 def HasType.denotation {Γ e A} : (Γ ⊢ e : A) → (〚Γ〛 ⟶ 〚A〛)
   | var x A hx => Ctx.lookup Γ x hx
   | dvar x A hx => Ctx.lookup Γ x hx
-  | unit_intro => PartOrd.terminal.from 〚Γ〛
+  | unit_intro => terminal.from 〚Γ〛
   | prod_intro e₁ e₂ A₁ A₂ he₁ he₂ =>
     let f := 〚show Γ ⊢ e₁ : A₁ from he₁〛
     let g := 〚show Γ ⊢ e₂ : A₂ from he₂〛
-    PartOrd.prod.lift f 〚he₂〛
+    prod_lift f 〚he₂〛
   | prod_elim₁ e A₁ A₂ he => 〚show Γ ⊢ e : A₁.prod A₂ from he〛 ≫ fst
   | prod_elim₂ e A₁ A₂ he => 〚show Γ ⊢ e : A₁.prod A₂ from he〛 ≫ snd
   | abs_intro e A B he => curry_left 〚show ((.none, A) :: Γ) ⊢ e : B from he〛
   | abs_elim e₁ e₂ A B he₁ he₂ =>
     let f := 〚show Γ ⊢ e₁ : A.arr B from he₁〛
     let g := 〚show Γ ⊢ e₂ : A from he₂〛
-    PartOrd.prod.lift f g ≫ ev'
+    prod_lift f g ≫ ev'
   | coprod_intro₁ e A₁ A₂ he => 〚show Γ ⊢ e : A₁ from he〛 ≫ inl
   | coprod_intro₂ e A₁ A₂ he => 〚show Γ ⊢ e : A₂ from he〛 ≫ inr
   | coprod_elim e e₁ e₂ A₁ A₂ C he he₁ he₂ =>
     let f := 〚show Γ ⊢ e : A₁.coprod A₂ from he〛
     let g₁ := 〚show ((.none, A₁) :: Γ) ⊢ e₁ : C from he₁〛
     let g₂ := 〚show ((.none, A₂) :: Γ) ⊢ e₂ : C from he₂〛
-    PartOrd.prod.lift (𝟙 〚Γ〛) f ≫ dist.hom ≫ coprod.desc g₁ g₂
+    prod_lift (𝟙 〚Γ〛) f ≫ dist.hom ≫ coprod_desc g₁ g₂
   | discrete_intro e A he => drop Γ ≫ δ [Γ]ᵈ ≫ [〚show [Γ]ᵈ ⊢ e : A from he〛]ᵈ
   | discrete_elim e₁ e₂ A C he₁ he₂ =>
     let f := 〚show Γ ⊢ e₁ : [A]ᵈ from he₁〛
     let g := 〚show ((.D, A) :: Γ) ⊢ e₂ : C from he₂〛
-    PartOrd.prod.lift (𝟙 〚Γ〛) f ≫ g
+    prod_lift (𝟙 〚Γ〛) f ≫ g
   | bot_intro L => PartOrd.terminal.from 〚Γ〛 ≫ LatTy.bot L
   | singleton_intro e T he => drop Γ ≫ δ [Γ]ᵈ ≫ [〚he〛]ᵈ ≫ (FinTy.toTy_denotation ▸ one)
   | sup_intro e₁ e₂ L he₁ he₂ =>
     let f := 〚show Γ ⊢ e₁ : L from he₁〛
     let g := 〚show Γ ⊢ e₂ : L from he₂〛
-    PartOrd.prod.lift f g ≫ LatTy.sup L
+    prod_lift f g ≫ LatTy.sup L
   | for_intro e₁ e₂ T L he₁ he₂ =>
     let f := 〚show Γ ⊢ e₁ : 𝒫 T from he₁〛
     let g := 〚show ((.D, T.toTy) :: Γ) ⊢ e₂ : L from he₂〛
-    PartOrd.prod.lift (𝟙 〚Γ〛) f ≫ LatTy.comprehension L (FinTy.toTy_denotation ▸ g)
+    prod_lift (𝟙 〚Γ〛) f ≫ LatTy.comprehension L (FinTy.toTy_denotation ▸ g)
   | fix_intro e L he =>
     let f := 〚show ((.none, L) :: [Γ]ᵈ) ⊢ e : L from he〛
     drop Γ ≫ δ [Γ]ᵈ ≫ LatTy.fix ((Disc.comonad.ε.app 〚[Γ]ᵈ〛 ⊗ₘ 𝟙 〚L〛) ≫ f)
