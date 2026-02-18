@@ -1485,6 +1485,98 @@ end STLC
 
 end Section4
 
+section Section5
+
+-- TODO
+
+end Section5
+
+section Section6
+
+/-! Definition 4.6.1 -/
+
+structure Change where
+  X : PartOrd.{u}
+  Δ : PartOrd.{u}
+  V : SetRel X Δ
+  update : V → X
+  update_monotone : ∀ xdx : V, xdx.1.1 ≤ update xdx
+  zero : X → Δ
+  zero_valid : ∀ x, (x, zero x) ∈ V
+  zero_update: ∀ x, update ⟨(x, zero x), zero_valid x⟩ = x
+
+/-! Example 4.6.2 -/
+
+example : Change where
+  X := PartOrd.of (Fin 100)
+  Δ := PartOrd.of ℕ
+  V := {(n, k) : Fin 100 × ℕ | n + k < 100}
+  update := fun ⟨(n, k), h⟩ => ⟨n + k, by rw [Set.mem_setOf_eq] at h; omega⟩
+  update_monotone := by
+    simp only [Subtype.forall, Prod.forall]
+    intro ⟨n, hn⟩ k h
+    simp
+  zero x := 0
+  zero_valid := Fin.isLt
+  zero_update _ := rfl
+
+/-! Example 4.6.3 -/
+
+example {L : SemilatSupCat} : Change where
+  X := PartOrd.of L
+  Δ := PartOrd.of L
+  V := Set.univ
+  update := fun ⟨(x, dx), ⟨⟩⟩ => x ⊔ dx
+  update_monotone _ := le_sup_left
+  zero _ := ⊥
+  zero_valid := Set.mem_univ
+  zero_update := sup_bot_eq
+
+namespace Change
+
+instance : Category Change where
+  Hom := sorry
+  id := sorry
+  comp := sorry
+
+/-! Definition 4.6.7 -/
+
+def terminal : Change where
+  X := PartOrd.terminal
+  Δ := PartOrd.terminal
+  V := Set.univ
+  update _ := ⟨⟩
+  update_monotone _ := le_rfl
+  zero _ := ⟨⟩
+  zero_valid := Set.mem_univ
+  zero_update _ := rfl
+
+def isTerminal : IsTerminal terminal :=
+  IsTerminal.ofUniqueHom
+    (fun _ => sorry)
+    (fun _ _ => sorry)
+
+def terminal.from (𝕏 : Change) : 𝕏 ⟶ terminal :=
+  sorry
+
+/-! Definition 4.6.8 -/
+
+def prod (𝕏 𝕐 : Change) : Change where
+  X := 𝕏.X ⊗ 𝕐.X
+  Δ := 𝕏.Δ ⊗ 𝕐.Δ
+  V := {((x, y), (dx, dy)) | (x, dx) ∈ 𝕏.V ∧ (y, dy) ∈ 𝕐.V}
+  update := fun ⟨((x, y), (dx, dy)), ⟨hx, hy⟩⟩ =>
+    (𝕏.update ⟨(x, dx), hx⟩, 𝕐.update ⟨(y, dy), hy⟩)
+  update_monotone := fun ⟨((x, y), (dx, dy)), ⟨hx, hy⟩⟩ =>
+    ⟨𝕏.update_monotone ⟨(x, dx), hx⟩, 𝕐.update_monotone ⟨(y, dy), hy⟩⟩
+  zero | (x, y) => (𝕏.zero x, 𝕐.zero y)
+  zero_valid | (x, y) => ⟨𝕏.zero_valid x, 𝕐.zero_valid y⟩
+  zero_update | (x, y) => Prod.ext (𝕏.zero_update x) (𝕐.zero_update y)
+
+end Change
+
+end Section6
+
 end Chapter4
 
 section Chapter6
