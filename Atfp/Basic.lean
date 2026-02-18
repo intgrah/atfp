@@ -1505,6 +1505,9 @@ structure Change where
   zero_valid : ∀ x, (x, zero x) ∈ V
   zero_update: ∀ x, update ⟨(x, zero x), zero_valid x⟩ = x
 
+notation x " ⨁[" 𝕏 "]" dx => Change.update 𝕏 ⟨(x, dx), ‹_›⟩
+notation "𝟬[" 𝕏 "]" => Change.zero 𝕏
+
 /-! Example 4.6.2 -/
 
 example : Change where
@@ -1559,6 +1562,16 @@ def isTerminal : IsTerminal terminal :=
 def terminal.from (𝕏 : Change) : 𝕏 ⟶ terminal :=
   sorry
 
+def initial : Change where
+  X := PartOrd.initial
+  Δ := PartOrd.initial
+  V := Set.univ
+  update _ := _
+  update_monotone _ := le_rfl
+  zero := PEmpty.elim
+  zero_valid := Set.mem_univ
+  zero_update _ := rfl
+
 /-! Definition 4.6.8 -/
 
 def prod (𝕏 𝕐 : Change) : Change where
@@ -1566,12 +1579,40 @@ def prod (𝕏 𝕐 : Change) : Change where
   Δ := 𝕏.Δ ⊗ 𝕐.Δ
   V := {((x, y), (dx, dy)) | (x, dx) ∈ 𝕏.V ∧ (y, dy) ∈ 𝕐.V}
   update := fun ⟨((x, y), (dx, dy)), ⟨hx, hy⟩⟩ =>
-    (𝕏.update ⟨(x, dx), hx⟩, 𝕐.update ⟨(y, dy), hy⟩)
+    (x ⨁[𝕏] dx, y ⨁[𝕐] dy)
   update_monotone := fun ⟨((x, y), (dx, dy)), ⟨hx, hy⟩⟩ =>
     ⟨𝕏.update_monotone ⟨(x, dx), hx⟩, 𝕐.update_monotone ⟨(y, dy), hy⟩⟩
-  zero | (x, y) => (𝕏.zero x, 𝕐.zero y)
+  zero | (x, y) => (𝟬[𝕏] x, 𝟬[𝕐] y)
   zero_valid | (x, y) => ⟨𝕏.zero_valid x, 𝕐.zero_valid y⟩
   zero_update | (x, y) => Prod.ext (𝕏.zero_update x) (𝕐.zero_update y)
+
+/-! Definition 4.6.9 -/
+
+def coprod (𝕏 𝕐 : Change) : Change where
+  X := 𝕏.X.coprod 𝕐.X
+  Δ := 𝕏.Δ.coprod 𝕐.Δ
+  V := { (xy, dxy) |
+    match xy, dxy with
+    | .inl x, .inl dx => (x, dx) ∈ 𝕏.V
+    | .inr y, .inr dy => (y, dy) ∈ 𝕐.V
+    | _, _ => False }
+  update
+    | ⟨(.inl x, .inl dx), h⟩ => .inl (x ⨁[𝕏] dx)
+    | ⟨(.inr y, .inr dy), h⟩ => .inr (y ⨁[𝕐] dy)
+  update_monotone
+    | ⟨(.inl x, .inl dx), h⟩ =>
+      Sum.inl_le_inl_iff.mpr (𝕏.update_monotone ⟨(x, dx), h⟩)
+    | ⟨(.inr y, .inr dy), h⟩ =>
+      Sum.inr_le_inr_iff.mpr (𝕐.update_monotone ⟨(y, dy), h⟩)
+  zero
+    | .inl x => .inl (𝟬[𝕏] x)
+    | .inr y => .inr (𝟬[𝕐] y)
+  zero_valid
+    | .inl x => 𝕏.zero_valid x
+    | .inr y => 𝕐.zero_valid y
+  zero_update
+    | .inl x => congrArg Sum.inl (𝕏.zero_update x)
+    | .inr y => congrArg Sum.inr (𝕐.zero_update y)
 
 end Change
 
