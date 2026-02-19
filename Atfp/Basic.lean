@@ -17,6 +17,7 @@ import Mathlib.GroupTheory.Coprod.Basic
 import Mathlib.Order.Category.CompleteLat
 import Mathlib.Order.Category.PartOrd
 import Mathlib.Order.Category.Semilat
+import Mathlib.Order.FixedPoints
 
 open CategoryTheory Limits MonoidalCategory
 
@@ -1505,7 +1506,9 @@ structure Change where
   zero_valid : ∀ x, (x, zero x) ∈ V
   zero_update: ∀ x, update ⟨(x, zero x), zero_valid x⟩ = x
 
-notation x " ⨁[" 𝕏 "]" dx => Change.update 𝕏 ⟨(x, dx), ‹_›⟩
+instance : CoeSort Change.{u} (Type u) := ⟨fun 𝕏 => 𝕏.X⟩
+
+notation x " ⨁[" 𝕏 "]" dx => Change.update 𝕏 ⟨(x, dx), by aesop⟩
 notation "𝟬[" 𝕏 "]" => Change.zero 𝕏
 
 /-! Example 4.6.2 -/
@@ -1525,7 +1528,7 @@ example : Change where
 
 /-! Example 4.6.3 -/
 
-example {L : SemilatSupCat} : Change where
+def Change.ofCompleteLat (L : CompleteLat) : Change where
   X := PartOrd.of L
   Δ := PartOrd.of L
   V := Set.univ
@@ -1535,11 +1538,181 @@ example {L : SemilatSupCat} : Change where
   zero_valid := Set.mem_univ
   zero_update := sup_bot_eq
 
+def IsDerivative {𝕏 𝕐 : Change.{u}}
+    (f : 𝕏.X ⟶ 𝕐.X)
+    (f' : [𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ) : Prop :=
+  ∀ x dx, (_ : (x, dx) ∈ 𝕏.V) → (_ : (f x, f' (x, dx)) ∈ 𝕐.V) → f (x ⨁[𝕏] dx) = f x ⨁[𝕐] f' (x, dx)
+
+section
+
+notation "𝒫ℕ'" => Change.ofCompleteLat (CompleteLat.of (Set ℕ))
+notation "𝒫ℕ" => PartOrd.of (Set ℕ)
+
+def f : 𝒫ℕ ⟶ 𝒫ℕ :=
+  PartOrd.ofHom {
+    toFun X := X ∪ {1, 2}
+    monotone' {X Y} h := by
+      simp only [Set.union_insert, Set.union_singleton]
+      apply Set.insert_subset_insert
+      apply Set.insert_subset_insert
+      exact h
+  }
+
+def f'₀ : [𝒫ℕ]ᵈ ⊗ 𝒫ℕ ⟶ 𝒫ℕ :=
+  PartOrd.ofHom {
+    toFun | (_, dx) => dx
+    monotone' _ _ | ⟨_, hdx⟩ => hdx
+  }
+
+example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₀ := by
+  intro x dx h
+  dsimp
+  sorry
+
+def f'₁ : [𝒫ℕ]ᵈ ⊗ 𝒫ℕ ⟶ 𝒫ℕ :=
+  PartOrd.ofHom {
+    toFun | (_, dx) => dx \ {1}
+    monotone' := by
+      intro (x, y) (dx, dy) ⟨hdx, hdy⟩
+      simp only [sdiff_le_iff, sup_sdiff_self]
+      trans
+      · exact hdy
+      · simp
+  }
+
+def f'₂ : [𝒫ℕ]ᵈ ⊗ 𝒫ℕ ⟶ 𝒫ℕ :=
+  PartOrd.ofHom {
+    toFun | (_, dx) => dx \ {2}
+    monotone' := by
+      intro (x, y) (dx, dy) ⟨hdx, hdy⟩
+      simp only [sdiff_le_iff, sup_sdiff_self]
+      trans
+      · exact hdy
+      · simp
+  }
+
+def f'₃ : [𝒫ℕ]ᵈ ⊗ 𝒫ℕ ⟶ 𝒫ℕ :=
+  PartOrd.ofHom {
+    toFun | (_, dx) => dx \ {1, 2}
+    monotone' := by
+      intro (x, y) (dx, dy) ⟨_, hdy⟩
+      simp only [sdiff_le_iff, sup_sdiff_self]
+      trans
+      · exact hdy
+      · simp
+  }
+
+end
+
+/-! Definition 4.6.5 -/
+
+namespace SeminaiveFP
+
+variable (L : CompleteLat.{u})
+  (f : PartOrd.of L ⟶ PartOrd.of L)
+  (f' : [PartOrd.of L]ᵈ ⊗ PartOrd.of L ⟶ PartOrd.of L)
+
+mutual
+
+def x : ℕ → PartOrd.of L
+  | 0 => ⊥
+  | i + 1 => x i ⊔ dx i
+
+def dx : ℕ → PartOrd.of L
+  | 0 => f ⊥
+  | i + 1 => f' (x i, dx i)
+
+end
+
+def semifix
+    (_ : @IsDerivative
+      (Change.ofCompleteLat L)
+      (Change.ofCompleteLat L)
+      f f') : L :=
+  ⨆ i, x L f f' i
+
+/-! Theorem 4.6.6 -/
+
+theorem semifix_fix
+    (hasc : WF_asc L)
+    (der : @IsDerivative
+      (Change.ofCompleteLat L)
+      (Change.ofCompleteLat L)
+      f f') :
+    semifix L f f' der = f.hom.lfp := by
+  let x := x L f f'
+  let dx := dx L f f'
+  have : ∀ i, x (i + 1) = f (x i) := by
+    intro i
+    induction i with
+    | zero =>
+      calc x 1
+          = x 0 ⊔ dx 0 := rfl
+        _ = ⊥ ⊔ f ⊥ := rfl
+        _ = f ⊥ := bot_sup_eq (f ⊥)
+        _ = f (x 0) := rfl
+    | succ j ih =>
+      calc x (j + 2)
+          = x (j + 1) ⊔ dx (j + 1) := rfl
+        _ = f (x j) ⊔ dx (j + 1) := by rw [ih]
+        _ = f (x j) ⊔ f' (x j, dx j) := rfl
+        _ = f (x j ⊔ dx j) := der (x j) (dx j) ⟨⟩ ⟨⟩ |>.symm
+        _ = f (x (j + 1)) := rfl
+  have h : ∀ i, x i = f^[i] ⊥ := by
+    intro i
+    induction i with
+    | zero => rfl
+    | succ j ih =>
+      rw [this, Function.iterate_succ_apply' f j ⊥, ih]
+  have := fixedPoints.lfp_eq_sSup_iterate f.hom
+  symm
+  change f.hom.lfp = ⨆ i, x i
+  simp only [h]
+  change f.hom.lfp = ⨆ i, f^[i] ⊥
+  apply this
+  sorry
+
+end SeminaiveFP
+
 namespace Change
 
-instance : Category Change where
-  Hom := sorry
-  id := sorry
+variable (𝕏 𝕐 : Change)
+
+def Hom' : Type u :=
+  {(f, f') : (𝕏.X ⟶ 𝕐.X) × ([𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ) | @IsDerivative 𝕏 𝕐 f f'}
+
+def Hom.Rel : Setoid (Hom' 𝕏 𝕐) where
+  r | ⟨(f, _), _⟩, ⟨(g, _), _⟩ => f = g
+  iseqv.refl _ := rfl
+  iseqv.symm := Eq.symm
+  iseqv.trans := Eq.trans
+
+def Hom := Quotient (Hom.Rel 𝕏 𝕐)
+
+variable {𝕏 𝕐 : Change}
+
+def Hom.base : Hom 𝕏 𝕐 → (𝕏.X ⟶ 𝕐.X) :=
+  Quotient.lift
+    (fun a : Hom' 𝕏 𝕐 => a.1.1)
+    (fun _ _ hfg => hfg)
+
+def Hom.base' (h : Hom 𝕏 𝕐) : (𝕏.X ⟶ 𝕐.X) :=
+  Quot.lift
+    (fun a : Hom' 𝕏 𝕐 => a.1.1)
+    (fun _ _ hfg => hfg)
+    h
+
+instance : LargeCategory Change where
+  Hom := Hom
+  id 𝕏 := by
+    apply Quotient.mk (Hom.Rel 𝕏 𝕏)
+    refine ⟨(𝟙 𝕏.X, ?_), ?_⟩
+    · exact PartOrd.ofHom {
+        toFun | (_, dx) => dx
+        monotone' _ _ | ⟨_, h⟩ => h
+      }
+    simp
+    sorry
   comp := sorry
 
 /-! Definition 4.6.7 -/
