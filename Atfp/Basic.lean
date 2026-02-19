@@ -1936,16 +1936,14 @@ notation "[" 𝕏 "]ᵈ" => disc 𝕏
 def comonad : Comonad Change where
   obj := disc
   map {𝕏 𝕐} f := {
-    base := @PartOrd.ofHom [𝕏]ᵈ.X [𝕐]ᵈ.X _ _ {
-      toFun := f.base
-      monotone' a b := congrArg f.base
-    }
+    base := @PartOrd.ofHom [𝕏]ᵈ.X [𝕐]ᵈ.X _ _
+      ⟨f.base, fun a b => congrArg f.base⟩
     hasDeriv :=
       ⟨PartOrd.ofHom ⟨fun (x, ⟨⟩) => ⟨⟩, fun _ _ _ => le_rfl⟩, fun x dx hx => ⟨hx, rfl⟩⟩
   }
   ε.app 𝕏 := {
     base := @PartOrd.ofHom [𝕏]ᵈ.X 𝕏.X _ _
-      ⟨fun x => x, fun a b hab => by rw [hab]⟩
+      ⟨fun x => x, fun _ _ h => by rw [h]⟩
     hasDeriv := by
       refine ⟨PartOrd.ofHom ⟨fun (x, ⟨⟩) => 𝟬[𝕏] x, ?_⟩, ?_⟩
       · rintro ⟨x₁, ⟨⟩⟩ ⟨x₂, ⟨⟩⟩ ⟨rfl, ⟨⟩⟩
@@ -1955,7 +1953,7 @@ def comonad : Comonad Change where
   }
   δ.app 𝕏 := {
     base := @PartOrd.ofHom [𝕏]ᵈ.X [[𝕏]ᵈ]ᵈ.X _ _
-      ⟨fun x => x, fun a b hab => by rw [hab]⟩
+      ⟨fun x => x, fun _ _ rfl => rfl⟩
     hasDeriv :=
       ⟨PartOrd.ofHom ⟨fun (x, ⟨⟩) => ⟨⟩, fun _ _ _ => le_rfl⟩, fun x dx hx => ⟨hx, rfl⟩⟩
   }
