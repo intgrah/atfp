@@ -1488,8 +1488,8 @@ def HasType.denotation {Γ e A} : (Γ ⊢ e : A) → (〚Γ〛 ⟶ 〚A〛)
     let g₁ := 〚show ((.none, A₁) :: Γ) ⊢ e₁ : C from he₁〛
     let g₂ := 〚show ((.none, A₂) :: Γ) ⊢ e₂ : C from he₂〛
     prod_lift (𝟙 〚Γ〛) f ≫ dist.hom ≫ coprod_desc g₁ g₂
-  | discrete_intro e A he => drop Γ ≫ δ [Γ]ᵈ ≫ [〚show [Γ]ᵈ ⊢ e : A from he〛]ᵈ
-  | discrete_elim e₁ e₂ A C he₁ he₂ =>
+  | disc_intro e A he => drop Γ ≫ δ [Γ]ᵈ ≫ [〚show [Γ]ᵈ ⊢ e : A from he〛]ᵈ
+  | disc_elim e₁ e₂ A C he₁ he₂ =>
     let f := 〚show Γ ⊢ e₁ : [A]ᵈ from he₁〛
     let g := 〚show ((.D, A) :: Γ) ⊢ e₂ : C from he₂〛
     prod_lift (𝟙 〚Γ〛) f ≫ g
