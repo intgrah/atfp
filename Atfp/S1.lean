@@ -153,7 +153,6 @@ private lemma RelCat.comp_snd_rel {W X Y : RelCat.{u}} (m : W ⟶ (X ⊕ Y)) w y
     (w, y) ∈ (m ≫ (prodFan X Y).snd).rel ↔ (w, Sum.inr y) ∈ m.rel :=
   ⟨fun ⟨_, hm, heq⟩ => heq ▸ hm, fun hm => ⟨_, hm, rfl⟩⟩
 
-
 def RelCat.prodFan_isLimit (X Y : RelCat.{u}) : IsLimit (RelCat.prodFan X Y) := by
   apply BinaryFan.isLimitMk
   case lift =>
@@ -189,6 +188,8 @@ end Exercise5
 
 section Exercise6
 
+universe u
+
 /-!
 The signature for `Inductive` has a comment saying that out is not strictly necessary. Show that
 you can implement out using `fold`, `into` and `F.map`. Why did we include it in the API
@@ -202,7 +203,7 @@ structure Inductive (F : Type u ⥤ Type u) where
   alg : Algebra F
   isInitial : IsInitial alg
 
-variable {F : Type u ⥤ Type u} (I : Inductive F)
+variable {F : Type u ⥤ Type u} (I : Inductive F) {α : Type u}
 
 def Inductive.fold (alg : F.obj α → α) : I.alg.a → α :=
   (I.isInitial.to ⟨α, alg⟩).f
@@ -355,7 +356,7 @@ inductive Split (α R : Type)
   | cons : R → Split α R
   | diff : R → R → R → Split α R
 
-def Split.map (f : R → S) : Split α R → Split α S
+def Split.map {R S} (f : R → S) : Split α R → Split α S
   | Split.inl n₁ => Split.inl n₁
   | Split.inr n₂ => Split.inr n₂
   | Split.cons x => Split.cons (f x)
@@ -384,7 +385,7 @@ def Split.alg : Split α ℕ → ℕ
   | Split.diff x y z => min (min x y) z + 1
 
 /-- Partial because well-foundedness is not checked -/
-partial def Split.hylo [Inhabited β] (coalg : α → Split σ α) (alg : Split σ β → β) : α → β :=
+partial def Split.hylo {β σ} [Inhabited β] (coalg : α → Split σ α) (alg : Split σ β → β) : α → β :=
   alg ∘ map (hylo coalg alg) ∘ coalg
 
 def lev₂ : List α × List α → ℕ := Split.hylo Split.coalg Split.alg
@@ -393,7 +394,7 @@ def lev₂ : List α × List α → ℕ := Split.hylo Split.coalg Split.alg
 #guard lev₂ ([1, 2, 3], [1, 2, 3]) == 0
 
 /-- Version of `map` handling mutable state. -/
-def Split.mapM [Applicative m] (f : F → m G) : Split α F → m (Split α G)
+def Split.mapM {m F G} [Applicative m] (f : F → m G) : Split α F → m (Split α G)
   | .inl s => pure (.inl s)
   | .inr s => pure (.inr s)
   | .cons x => .cons <$> f x
@@ -403,7 +404,7 @@ def Split.mapM [Applicative m] (f : F → m G) : Split α F → m (Split α G)
 variable [Hashable α]
 
 /-- Memoised version for dynamic programming -/
-unsafe def Split.memo
+unsafe def Split.memo {β σ}
     (coalg : α → Split σ α)
     (alg : Split σ β → β) :
     α → β :=
