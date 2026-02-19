@@ -1933,7 +1933,7 @@ namespace disc
 
 notation "[" 𝕏 "]ᵈ" => disc 𝕏
 
-def functor : Comonad Change where
+def comonad : Comonad Change where
   obj := disc
   map {𝕏 𝕐} f := {
     base := @PartOrd.ofHom [𝕏]ᵈ.X [𝕐]ᵈ.X _ _ {
