@@ -951,9 +951,11 @@ instance : CartesianMonoidalCategory PartOrd :=
 
 def initial : PartOrd := of PEmpty
 
+def initial.to (X : PartOrd) : initial ⟶ X :=
+  ofHom ⟨PEmpty.elim, fun x => x.elim⟩
+
 def isInitial : IsInitial initial :=
-  IsInitial.ofUniqueHom
-    (fun _ => ofHom ⟨PEmpty.elim, fun x => x.elim⟩)
+  IsInitial.ofUniqueHom initial.to
     (fun _ _ => ext fun x => x.elim)
 
 instance : HasInitial PartOrd :=
