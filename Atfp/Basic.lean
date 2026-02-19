@@ -894,6 +894,10 @@ def isTerminal : IsTerminal terminal :=
 def terminal.from (X : PartOrd) : X ⟶ terminal :=
   ofHom ⟨fun _ => ⟨⟩, fun _ _ _ => le_rfl⟩
 
+def isTerminal : IsTerminal terminal :=
+  IsTerminal.ofUniqueHom terminal.from
+    (fun _ _ => ext fun _ => rfl)
+
 def terminalCone : LimitCone (Functor.empty PartOrd) where
   cone := asEmptyCone terminal
   isLimit := isTerminal
