@@ -9,7 +9,8 @@ import Mathlib.CategoryTheory.Limits.Shapes.Terminal
 import Mathlib.CategoryTheory.Limits.Types.Coproducts
 import Mathlib.CategoryTheory.Limits.Types.Products
 import Mathlib.CategoryTheory.Monad.Basic
-import Mathlib.CategoryTheory.Monoidal.Closed.Cartesian
+import Mathlib.CategoryTheory.Monoidal.Cartesian.Basic
+import Mathlib.CategoryTheory.Monoidal.Closed.Basic
 import Mathlib.CategoryTheory.Types.Basic
 import Mathlib.Data.Matrix.Basic
 import Mathlib.Data.Sum.Order
@@ -272,7 +273,7 @@ instance [Category 𝓒] [Category 𝓓] : Category (𝓒 × 𝓓) := inferInsta
 
 /-! Definition 2.3.18 -/
 
-#check exp
+#check ihom
 
 -- TODO
 
@@ -1014,8 +1015,10 @@ instance (A B : PartOrd) : PartialOrder (A ⟶ B) where
 instance : CartesianMonoidalCategory PartOrd :=
   CartesianMonoidalCategory.ofChosenFiniteProducts terminalCone binaryProductCone
 
+def exp (A B : PartOrd) : PartOrd := of (A ⟶ B)
+
 def expFunctor (A : PartOrd) : PartOrd ⥤ PartOrd where
-  obj B := of (A ⟶ B)
+  obj := exp A
   map f := ofHom {
     toFun g := g ≫ f
     monotone' _ _ h x := f.hom.monotone (h x)
@@ -1076,8 +1079,8 @@ def uncurry (f : B ⟶ of (A ⟶ C)) : A ⊗ B ⟶ C :=
       ((f b₁).hom.monotone ha).trans (f.hom.monotone hb a₂)
   }
 
-instance : CartesianClosed PartOrd.{u} :=
-  CartesianClosed.mk _ fun A => Exponentiable.mk _ _ (PartOrd.tensorProductAdjunction A)
+instance : MonoidalClosed PartOrd :=
+  MonoidalClosed.mk fun A => Closed.mk _ (PartOrd.tensorProductAdjunction A)
 
 def Disc (X : PartOrd) : PartOrd where
   carrier := X
@@ -1314,7 +1317,7 @@ notation "〚" A "〛" => Ty.denotation A
 def Ty.denotation : Ty.{u} → PartOrd.{u}
   | 1 => PartOrd.terminal
   | prod A B => 〚A〛 ⊗ 〚B〛
-  | arr A B => 〚A〛 ⟹ 〚B〛
+  | arr A B => 〚A〛.exp 〚B〛
   | coprod A B => 〚A〛.coprod 〚B〛
   | powerset T => U.obj (PartOrd.powerset.obj 〚T〛)
   | discrete A => [〚A〛]ᵈ
@@ -1399,8 +1402,8 @@ def LatTy.comprehension {A : PartOrd} {X : FinTy} (L : LatTy) (f : A ⊗ [〚X�
   }
 
 def LatTy.fix {A : PartOrd} {L : LatTy} (f : [A]ᵈ ⊗ 〚L〛 ⟶ 〚L〛) :
-    [A]ᵈ ⟶ 〚L.toTy〛 :=
-  @PartOrd.ofHom [A]ᵈ 〚L.toTy〛 _ _ {
+    [A]ᵈ ⟶ 〚L〛 :=
+  @PartOrd.ofHom [A]ᵈ 〚L〛 _ _ {
     toFun a := sorry
     monotone' _ _ ha := by subst ha; rfl
   }
@@ -1688,7 +1691,6 @@ def Hom.Rel : Setoid (Hom' 𝕏 𝕐) where
   iseqv.trans := Eq.trans
 
 def Hom := Quotient (Hom.Rel 𝕏 𝕐)
-
 variable {𝕏 𝕐 : Change}
 
 def Hom.base : Hom 𝕏 𝕐 → (𝕏.X ⟶ 𝕐.X) :=
