@@ -12,6 +12,7 @@ import Mathlib.CategoryTheory.Monad.Basic
 import Mathlib.CategoryTheory.Monoidal.Cartesian.Basic
 import Mathlib.CategoryTheory.Monoidal.Closed.Basic
 import Mathlib.CategoryTheory.Types.Basic
+import Mathlib.Computability.ContextFreeGrammar
 import Mathlib.Data.Matrix.Basic
 import Mathlib.Data.Sum.Order
 import Mathlib.GroupTheory.Coprod.Basic
@@ -876,6 +877,32 @@ theorem semilattice_wfasc_lfp {L : Type u} [SemilatticeSup L] [OrderBot L]
 
 end Section1
 
+section Section2
+
+section Section1
+
+-- TODO transitive closure
+
+end Section1
+
+section Section2
+
+#check ContextFreeGrammar
+#check ContextFreeGrammar.NT
+#check ContextFreeGrammar.rules
+
+-- TODO string parsing
+
+end Section2
+
+section Section3
+
+-- TODO Dataflow analysis
+
+end Section3
+
+end Section2
+
 section Section3
 
 variable {A B C D : PartOrd}
@@ -885,11 +912,6 @@ variable {A B C D : PartOrd}
 namespace PartOrd
 
 def terminal : PartOrd := of PUnit
-
-def isTerminal : IsTerminal terminal :=
-  IsTerminal.ofUniqueHom
-    (fun _ => ofHom ⟨fun _ => ⟨⟩, fun _ _ _ => le_rfl⟩)
-    (fun _ _ => ext fun _ => rfl)
 
 def terminal.from (X : PartOrd) : X ⟶ terminal :=
   ofHom ⟨fun _ => ⟨⟩, fun _ _ _ => le_rfl⟩
@@ -1088,7 +1110,7 @@ def uncurry (f : B ⟶ of (A ⟶ C)) : A ⊗ B ⟶ C :=
 instance : MonoidalClosed PartOrd :=
   MonoidalClosed.mk fun A => Closed.mk _ (PartOrd.tensorProductAdjunction A)
 
-def Disc (X : PartOrd) : PartOrd where
+def disc (X : PartOrd) : PartOrd where
   carrier := X
   str.le := Eq
   str.lt a b := a = b ∧ b ≠ a
@@ -1096,18 +1118,18 @@ def Disc (X : PartOrd) : PartOrd where
   str.le_trans _ _ _ := Eq.trans
   str.le_antisymm _ _ h _ := h
 
-namespace Disc
+namespace disc
 
-notation "[" X "]ᵈ" => Disc X
+notation "[" X "]ᵈ" => disc X
 
 def comonad : Comonad PartOrd where
-  obj := Disc
+  obj := disc
   map {X Y} f :=
     @ofHom [X]ᵈ [Y]ᵈ _ _ ⟨f, fun _ _ => congrArg f⟩
   ε.app X := @ofHom [X]ᵈ X _ _ ⟨id, fun _ _ h => by subst h; exact le_rfl⟩
   δ.app X := @ofHom [X]ᵈ [[X]ᵈ]ᵈ _ _ ⟨id, fun _ _ h => h⟩
 
-notation "[" f "]ᵈ" => Disc.comonad.map f
+notation "[" f "]ᵈ" => disc.comonad.map f
 
 def iso_terminal : [terminal]ᵈ ≅ terminal where
   hom := @ofHom [terminal]ᵈ terminal _ _ ⟨id, fun _ _ _ => le_rfl⟩
@@ -1121,7 +1143,7 @@ def iso_prod (X Y : PartOrd) : [X.prod Y]ᵈ ≅ ([X]ᵈ.prod [Y]ᵈ) where
   hom_inv_id := rfl
   inv_hom_id := rfl
 
-end Disc
+end disc
 
 def powerset : PartOrd ⥤ SemilatSupCat where
   obj X := SemilatSupCat.of (Set X)
@@ -1418,19 +1440,19 @@ set_option hygiene false in
 notation "〚" Γ "〛" => Ctx.denotation Γ
 
 def Ctx.denotation : Ctx.{u} → PartOrd.{u}
-  | [] => terminal
+  | [] => 𝟙_ PartOrd
   | (.none, A) :: Γ => 〚Γ〛 ⊗ 〚A〛
   | (.D, A) :: Γ => 〚Γ〛 ⊗ [〚A〛]ᵈ
 
 def Ctx.lookup {q A} : (Γ : Ctx) → (x : ℕ) → Γ[x]? = some (q, A) → (〚Γ〛 ⟶ 〚A〛)
   | (.none, A) :: Γ, 0, rfl => snd
   | (.none, _) :: Γ, x + 1, h => fst ≫ Ctx.lookup Γ x h
-  | (.D, A) :: Γ, 0, rfl => snd ≫ Disc.comonad.ε.app 〚A〛
+  | (.D, A) :: Γ, 0, rfl => snd ≫ disc.comonad.ε.app 〚A〛
   | (.D, _) :: Γ, x + 1, h => fst ≫ Ctx.lookup Γ x h
 
 def Ctx.drop (Γ : Ctx) : 〚Γ〛 ⟶ 〚[Γ]ᵈ〛 :=
   match Γ with
-  | [] => 𝟙 _
+  | [] => 𝟙 〚[]〛
   | (.none, _) :: Γ => fst ≫ Ctx.drop Γ
   | (.D, A) :: Γ => Ctx.drop Γ ⊗ₘ 𝟙 [〚A〛]ᵈ
 
@@ -1441,9 +1463,9 @@ lemma Ctx.disc.idem {Γ : Ctx} : [[Γ]ᵈ]ᵈ = [Γ]ᵈ := by
 
 def Ctx.δ (Δ : Ctx) (h : [Δ]ᵈ = Δ := by exact Ctx.disc.idem) : 〚Δ〛 ⟶ [〚Δ〛]ᵈ :=
   match Δ with
-  | [] => Disc.iso_terminal.inv
+  | [] => disc.iso_terminal.inv
   | (.D, A) :: Δ =>
-    (Ctx.δ Δ (congrArg List.tail h) ⊗ₘ Disc.comonad.δ.app 〚A〛) ≫ (Disc.iso_prod 〚Δ〛 [〚A〛]ᵈ).inv
+    (Ctx.δ Δ (congrArg List.tail h) ⊗ₘ disc.comonad.δ.app 〚A〛) ≫ (disc.iso_prod 〚Δ〛 [〚A〛]ᵈ).inv
   | (.none, _) :: Δ => by simpa using List.filter_eq_self.mp h
 
 set_option hygiene false in
@@ -1478,7 +1500,8 @@ def HasType.denotation {Γ e A} : (Γ ⊢ e : A) → (〚Γ〛 ⟶ 〚A〛)
     let g := 〚show ((.D, A) :: Γ) ⊢ e₂ : C from he₂〛
     prod_lift (𝟙 〚Γ〛) f ≫ g
   | bot_intro L => PartOrd.terminal.from 〚Γ〛 ≫ LatTy.bot L
-  | one_intro e T he => drop Γ ≫ δ [Γ]ᵈ ≫ [〚he〛]ᵈ ≫ (FinTy.toTy_denotation ▸ one)
+  | one_intro e T he =>
+    drop Γ ≫ δ [Γ]ᵈ ≫ [〚show [Γ]ᵈ ⊢ e : T.toTy from he〛]ᵈ ≫ (FinTy.toTy_denotation ▸ one)
   | sup_intro e₁ e₂ L he₁ he₂ =>
     let f := 〚show Γ ⊢ e₁ : L from he₁〛
     let g := 〚show Γ ⊢ e₂ : L from he₂〛
@@ -1489,7 +1512,7 @@ def HasType.denotation {Γ e A} : (Γ ⊢ e : A) → (〚Γ〛 ⟶ 〚A〛)
     prod_lift (𝟙 〚Γ〛) f ≫ LatTy.comprehension L (FinTy.toTy_denotation ▸ g)
   | fix_intro e L he =>
     let f := 〚show ((.none, L) :: [Γ]ᵈ) ⊢ e : L from he〛
-    drop Γ ≫ δ [Γ]ᵈ ≫ LatTy.fix ((Disc.comonad.ε.app 〚[Γ]ᵈ〛 ⊗ₘ 𝟙 〚L〛) ≫ f)
+    drop Γ ≫ δ [Γ]ᵈ ≫ LatTy.fix ((disc.comonad.ε.app 〚[Γ]ᵈ〛 ⊗ₘ 𝟙 〚L〛) ≫ f)
 
 end STLC
 
@@ -1497,11 +1520,13 @@ end Section4
 
 section Section5
 
--- TODO
+-- TODO Incrementalizing fixed point algorithms
 
 end Section5
 
 section Section6
+
+section Section1
 
 /-! Definition 4.6.1 -/
 
@@ -1514,8 +1539,6 @@ structure Change where
   zero : X → Δ
   zero_valid : ∀ x, (x, zero x) ∈ V
   zero_update: ∀ x, update ⟨(x, zero x), zero_valid x⟩ = x
-
-instance : CoeSort Change.{u} (Type u) := ⟨fun 𝕏 => 𝕏.X⟩
 
 notation x " ⨁[" 𝕏 "]" dx => Change.update 𝕏 ⟨(x, dx), by aesop⟩
 notation "𝟬[" 𝕏 "]" => Change.zero 𝕏
@@ -1547,10 +1570,28 @@ def Change.ofCompleteLat (L : CompleteLat) : Change where
   zero_valid := Set.mem_univ
   zero_update := sup_bot_eq
 
+end Section1
+
+section Section2
+
+/-! Definition 4.6.4 -/
+
+/--
+Helper structure to define derivatives
+Dependently typed, as `eq` depends on `hy`
+-/
+structure Deriv {𝕏 𝕐 : Change.{u}}
+    (f : 𝕏.X ⟶ 𝕐.X)
+    (f' : [𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ)
+    x dx
+    (_ : (x, dx) ∈ 𝕏.V) : Prop where
+  hy : (f x, f' (x, dx)) ∈ 𝕐.V
+  eq : f (x ⨁[𝕏] dx) = f x ⨁[𝕐] f' (x, dx)
+
 def IsDerivative {𝕏 𝕐 : Change.{u}}
     (f : 𝕏.X ⟶ 𝕐.X)
     (f' : [𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ) : Prop :=
-  ∀ x dx, (_ : (x, dx) ∈ 𝕏.V) → (_ : (f x, f' (x, dx)) ∈ 𝕐.V) → f (x ⨁[𝕏] dx) = f x ⨁[𝕐] f' (x, dx)
+  ∀ x dx, (hx : (x, dx) ∈ 𝕏.V) → Deriv f f' x dx hx
 
 section
 
@@ -1575,8 +1616,9 @@ def f'₀ : [𝒫ℕ]ᵈ ⊗ 𝒫ℕ ⟶ 𝒫ℕ :=
 
 example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₀ := by
   intro x dx h
-  dsimp
-  sorry
+  constructor
+  · sorry
+  · sorry
 
 def f'₁ : [𝒫ℕ]ᵈ ⊗ 𝒫ℕ ⟶ 𝒫ℕ :=
   PartOrd.ofHom {
@@ -1665,7 +1707,7 @@ theorem semifix_fix
           = x (j + 1) ⊔ dx (j + 1) := rfl
         _ = f (x j) ⊔ dx (j + 1) := by rw [ih]
         _ = f (x j) ⊔ f' (x j, dx j) := rfl
-        _ = f (x j ⊔ dx j) := der (x j) (dx j) ⟨⟩ ⟨⟩ |>.symm
+        _ = f (x j ⊔ dx j) := der (x j) (dx j) ⟨⟩ |>.2.symm
         _ = f (x (j + 1)) := rfl
   have h : ∀ i, x i = f^[i] ⊥ := by
     intro i
@@ -1683,45 +1725,73 @@ theorem semifix_fix
 
 end SeminaiveFP
 
+end Section2
+
 namespace Change
+
+section Section3
 
 variable (𝕏 𝕐 : Change)
 
-def Hom' : Type u :=
-  {(f, f') : (𝕏.X ⟶ 𝕐.X) × ([𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ) | @IsDerivative 𝕏 𝕐 f f'}
+def Hom.Base : Type u :=
+  {(f, f') : (𝕏.X ⟶ 𝕐.X) × ([𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ) | IsDerivative f f'}
 
-def Hom.Rel : Setoid (Hom' 𝕏 𝕐) where
+def Hom.Rel : Setoid (Base 𝕏 𝕐) where
   r | ⟨(f, _), _⟩, ⟨(g, _), _⟩ => f = g
   iseqv.refl _ := rfl
   iseqv.symm := Eq.symm
   iseqv.trans := Eq.trans
 
-def Hom := Quotient (Hom.Rel 𝕏 𝕐)
+def Hom.Quot := Quotient (Hom.Rel 𝕏 𝕐)
+
+@[ext]
+structure Hom where
+  base : 𝕏.X ⟶ 𝕐.X
+  hasDeriv : ∃ f' : [𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ, IsDerivative base f'
+
+instance : FunLike (Hom 𝕏 𝕐) 𝕏.X 𝕐.X where
+  coe f := f.base
+  coe_injective' _ _ h :=
+    Hom.ext (ConcreteCategory.hom_injective (DFunLike.coe_fn_eq.mp h))
+
 variable {𝕏 𝕐 : Change}
 
-def Hom.base : Hom 𝕏 𝕐 → (𝕏.X ⟶ 𝕐.X) :=
-  Quotient.lift
-    (fun a : Hom' 𝕏 𝕐 => a.1.1)
-    (fun _ _ hfg => hfg)
+noncomputable def Hom.deriv (h : Hom 𝕏 𝕐) : ([𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ) :=
+  h.hasDeriv.choose
 
-def Hom.base' (h : Hom 𝕏 𝕐) : (𝕏.X ⟶ 𝕐.X) :=
-  Quot.lift
-    (fun a : Hom' 𝕏 𝕐 => a.1.1)
-    (fun _ _ hfg => hfg)
-    h
+def id 𝕏 : Hom 𝕏 𝕏 where
+  base := 𝟙 𝕏.X
+  hasDeriv := ⟨PartOrd.ofHom ⟨fun (_, dx) => dx, fun _ _ ⟨_, h⟩ => h⟩, fun _ _ hx => ⟨hx, rfl⟩⟩
+
+end Section3
 
 instance : LargeCategory Change where
   Hom := Hom
-  id 𝕏 := by
-    apply Quotient.mk (Hom.Rel 𝕏 𝕏)
-    refine ⟨(𝟙 𝕏.X, ?_), ?_⟩
-    · exact PartOrd.ofHom {
-        toFun | (_, dx) => dx
-        monotone' _ _ | ⟨_, h⟩ => h
-      }
-    simp
-    sorry
-  comp := sorry
+  id := id
+  comp {𝕏 𝕐 𝕫} f g := {
+    base := f.base ≫ g.base
+    hasDeriv := by
+      obtain ⟨f, f', hf⟩ := f
+      obtain ⟨g, g', hg⟩ := g
+      refine ⟨?_, ?_⟩
+      · refine PartOrd.ofHom ⟨fun (x, dx) => g' (f x, f' (x, dx)), ?_⟩
+        intro (x₁, dx₁) (x₂, dx₂) ⟨h₁, h₂⟩
+        change g' (f x₁, f' (x₁, dx₁)) ≤ g' (f x₂, f' (x₂, dx₂))
+        refine g'.hom.monotone ⟨?_, ?_⟩
+        · change f x₁ = f x₂
+          exact congrArg f h₁
+        · change f' (x₁, dx₁) ≤ f' (x₂, dx₂)
+          exact f'.hom.monotone ⟨h₁, h₂⟩
+      · intro x dx hx
+        have ⟨hy, hf⟩ := hf x dx hx
+        have ⟨hz, hg⟩ := hg (f x) (f' (x, dx)) hy
+        refine ⟨hz, ?_⟩
+        calc g (f (x ⨁[𝕏] dx))
+            = g (f x ⨁[𝕐] f' (x, dx)) := congrArg g hf
+          _ = g (f x) ⨁[𝕫] g' (f x, f' (x, dx)) := hg
+  }
+
+section Section4
 
 /-! Definition 4.6.7 -/
 
@@ -1735,13 +1805,15 @@ def terminal : Change where
   zero_valid := Set.mem_univ
   zero_update _ := rfl
 
-def isTerminal : IsTerminal terminal :=
-  IsTerminal.ofUniqueHom
-    (fun _ => sorry)
-    (fun _ _ => sorry)
+def terminal.from (𝕏 : Change) : 𝕏 ⟶ terminal where
+  base := PartOrd.terminal.from 𝕏.X
+  hasDeriv := ⟨PartOrd.terminal.from ([𝕏.X]ᵈ ⊗ 𝕏.Δ), fun _ _ _ => ⟨⟨⟩, rfl⟩⟩
 
-def terminal.from (𝕏 : Change) : 𝕏 ⟶ terminal :=
-  sorry
+def isTerminal : IsTerminal terminal :=
+  IsTerminal.ofUniqueHom terminal.from
+    (fun _ _ => rfl)
+
+end Section4
 
 def initial : Change where
   X := PartOrd.initial
@@ -1752,6 +1824,16 @@ def initial : Change where
   zero := PEmpty.elim
   zero_valid := Set.mem_univ
   zero_update _ := rfl
+
+def initial.to (𝕏 : Change) : initial ⟶ 𝕏 where
+  base := PartOrd.initial.to 𝕏.X
+  hasDeriv := ⟨PartOrd.ofHom ⟨fun (_, dx) => dx.elim, fun (_, dx₁) => dx₁.elim⟩, fun x => x.elim⟩
+
+def isInitial : IsInitial initial :=
+  IsInitial.ofUniqueHom initial.to
+    (fun _ _ => Hom.ext <| PartOrd.ext fun x => x.elim)
+
+section Section5
 
 /-! Definition 4.6.8 -/
 
@@ -1766,6 +1848,10 @@ def prod (𝕏 𝕐 : Change) : Change where
   zero | (x, y) => (𝟬[𝕏] x, 𝟬[𝕐] y)
   zero_valid | (x, y) => ⟨𝕏.zero_valid x, 𝕐.zero_valid y⟩
   zero_update | (x, y) => Prod.ext (𝕏.zero_update x) (𝕐.zero_update y)
+
+end Section5
+
+section Section6
 
 /-! Definition 4.6.9 -/
 
@@ -1795,11 +1881,106 @@ def coprod (𝕏 𝕐 : Change) : Change where
     | .inl x => congrArg Sum.inl (𝕏.zero_update x)
     | .inr y => congrArg Sum.inr (𝕐.zero_update y)
 
+end Section6
+
+section Section7
+
+instance {𝕏 𝕐 : Change} : PartialOrder (𝕏 ⟶ 𝕐) := sorry
+
+noncomputable def exp (𝕏 𝕐 : Change) : Change where
+  X := PartOrd.of (𝕏 ⟶ 𝕐)
+  Δ := PartOrd.of ([𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ)
+  V := { (f, df) : (𝕏 ⟶ 𝕐) × ([𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ) |
+      ∃ g' : [𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ, ∀ x dx,
+        (_ : (x, dx) ∈ 𝕏.V) →
+        -- TODO make this a dependent sum
+        (_ : (f.base x, df (x, dx)) ∈ 𝕐.V) →
+        (_ : (f.base (x ⨁[𝕏] dx), df (x ⨁[𝕏] dx, 𝟬[𝕏] (x ⨁[𝕏] dx))) ∈ 𝕐.V) →
+        (_ : (f.base x, df (x, 𝟬[𝕏] x)) ∈ 𝕐.V) →
+        (_ : (f.base x ⨁[𝕐] df (x, 𝟬[𝕏] x), g' (x, dx)) ∈ 𝕐.V) →
+        ((f.base x ⨁[𝕐] df (x, dx)) = f.base (x ⨁[𝕏] dx) ⨁[𝕐] df (x ⨁[𝕏] dx, 𝟬[𝕏] (x ⨁[𝕏] dx))) ∧
+        ((f.base x ⨁[𝕐] df (x, dx)) = (f.base x ⨁[𝕐] df (x, 𝟬[𝕏] x)) ⨁[𝕐] g' (x, dx))
+      }
+  update
+    | ⟨(f, df), h⟩ => sorry -- fun x => f.base x ⨁[𝕐] df (x, 𝟬[𝕏] x)
+  update_monotone
+    | ⟨(f, df), h⟩ => sorry
+  zero f := f.hasDeriv.choose
+  zero_valid := by
+    intro ⟨f, f', hf⟩
+    simp
+    sorry
+  zero_update := by
+    intro ⟨f, f', hf⟩
+    simp
+    sorry
+
+end Section7
+
+section Section8
+
+def disc (𝕏 : Change) : Change where
+  X := [𝕏.X]ᵈ
+  Δ := 𝟙_ PartOrd
+  V := Set.univ
+  update | ⟨(x, ⟨⟩), ⟨⟩⟩ => x
+  update_monotone _ := rfl
+  zero _ := ⟨⟩
+  zero_valid := Set.mem_univ
+  zero_update _ := rfl
+
+namespace disc
+
+notation "[" 𝕏 "]ᵈ" => disc 𝕏
+
+def functor : Comonad Change where
+  obj := disc
+  map {𝕏 𝕐} f := {
+    base := @PartOrd.ofHom [𝕏]ᵈ.X [𝕐]ᵈ.X _ _ {
+      toFun := f.base
+      monotone' a b := congrArg f.base
+    }
+    hasDeriv :=
+      ⟨PartOrd.ofHom ⟨fun (x, ⟨⟩) => ⟨⟩, fun _ _ _ => le_rfl⟩, fun x dx hx => ⟨hx, rfl⟩⟩
+  }
+  ε.app 𝕏 := {
+    base := @PartOrd.ofHom [𝕏]ᵈ.X 𝕏.X _ _
+      ⟨fun x => x, fun a b hab => by rw [hab]⟩
+    hasDeriv := by
+      refine ⟨PartOrd.ofHom ⟨fun (x, ⟨⟩) => 𝟬[𝕏] x, ?_⟩, ?_⟩
+      · rintro ⟨x₁, ⟨⟩⟩ ⟨x₂, ⟨⟩⟩ ⟨rfl, ⟨⟩⟩
+        rfl
+      · intro x ⟨⟩ ⟨⟩
+        exact ⟨𝕏.zero_valid x, 𝕏.zero_update x |>.symm⟩
+  }
+  δ.app 𝕏 := {
+    base := @PartOrd.ofHom [𝕏]ᵈ.X [[𝕏]ᵈ]ᵈ.X _ _
+      ⟨fun x => x, fun a b hab => by rw [hab]⟩
+    hasDeriv :=
+      ⟨PartOrd.ofHom ⟨fun (x, ⟨⟩) => ⟨⟩, fun _ _ _ => le_rfl⟩, fun x dx hx => ⟨hx, rfl⟩⟩
+  }
+
+end disc
+
+end Section8
+
+section Section9
+
+-- TODO semilattices
+
+end Section9
+
 end Change
 
 end Section6
 
 end Chapter4
+
+section Chapter5
+
+-- TODO graph algorithms
+
+end Chapter5
 
 section Chapter6
 
