@@ -1124,9 +1124,8 @@ notation "[" X "]ᵈ" => disc X
 
 def comonad : Comonad PartOrd where
   obj := disc
-  map {X Y} f :=
-    @ofHom [X]ᵈ [Y]ᵈ _ _ ⟨f, fun _ _ => congrArg f⟩
-  ε.app X := @ofHom [X]ᵈ X _ _ ⟨id, fun _ _ h => by subst h; exact le_rfl⟩
+  map {X Y} f := @ofHom [X]ᵈ [Y]ᵈ _ _ ⟨f, fun _ _ => congrArg f⟩
+  ε.app X := @ofHom [X]ᵈ X _ _ ⟨id, fun | _, _, rfl => le_rfl⟩
   δ.app X := @ofHom [X]ᵈ [[X]ᵈ]ᵈ _ _ ⟨id, fun _ _ h => h⟩
 
 notation "[" f "]ᵈ" => disc.comonad.map f
@@ -1936,14 +1935,12 @@ notation "[" 𝕏 "]ᵈ" => disc 𝕏
 def comonad : Comonad Change where
   obj := disc
   map {𝕏 𝕐} f := {
-    base := @PartOrd.ofHom [𝕏]ᵈ.X [𝕐]ᵈ.X _ _
-      ⟨f.base, fun a b => congrArg f.base⟩
+    base := PartOrd.disc.comonad.map f.base
     hasDeriv :=
       ⟨PartOrd.ofHom ⟨fun (x, ⟨⟩) => ⟨⟩, fun _ _ _ => le_rfl⟩, fun x dx hx => ⟨hx, rfl⟩⟩
   }
   ε.app 𝕏 := {
-    base := @PartOrd.ofHom [𝕏]ᵈ.X 𝕏.X _ _
-      ⟨fun x => x, fun _ _ h => by rw [h]⟩
+    base := PartOrd.disc.comonad.ε.app 𝕏.X
     hasDeriv := by
       refine ⟨PartOrd.ofHom ⟨fun (x, ⟨⟩) => 𝟬[𝕏] x, ?_⟩, ?_⟩
       · rintro ⟨x₁, ⟨⟩⟩ ⟨x₂, ⟨⟩⟩ ⟨rfl, ⟨⟩⟩
@@ -1952,8 +1949,7 @@ def comonad : Comonad Change where
         exact ⟨𝕏.zero_valid x, 𝕏.zero_update x |>.symm⟩
   }
   δ.app 𝕏 := {
-    base := @PartOrd.ofHom [𝕏]ᵈ.X [[𝕏]ᵈ]ᵈ.X _ _
-      ⟨fun x => x, fun _ _ rfl => rfl⟩
+    base := PartOrd.disc.comonad.δ.app 𝕏.X
     hasDeriv :=
       ⟨PartOrd.ofHom ⟨fun (x, ⟨⟩) => ⟨⟩, fun _ _ _ => le_rfl⟩, fun x dx hx => ⟨hx, rfl⟩⟩
   }
