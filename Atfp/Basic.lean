@@ -1563,7 +1563,7 @@ def Change.ofCompleteLat (L : CompleteLat) : Change where
   X := PartOrd.of L
   Δ := PartOrd.of L
   V := Set.univ
-  update := fun ⟨(x, dx), ⟨⟩⟩ => x ⊔ dx
+  update | ⟨(x, dx), ⟨⟩⟩ => x ⊔ dx
   update_monotone _ := le_sup_left
   zero _ := ⊥
   zero_valid := Set.mem_univ
@@ -1960,7 +1960,53 @@ end Section8
 
 section Section9
 
--- TODO semilattices
+def U.obj (L : SemilatSupCat) : Change where
+  X := PartOrd.of L
+  Δ := PartOrd.of L
+  V := Set.univ
+  update | ⟨(x, dx), ⟨⟩⟩ => x ⊔ dx
+  update_monotone _ := le_sup_left
+  zero _ := ⊥
+  zero_valid := Set.mem_univ
+  zero_update := sup_bot_eq
+
+def U.map {L M : SemilatSupCat} (f : SupBotHom L M) : U.obj L ⟶ U.obj M where
+  base := PartOrd.ofHom
+    ⟨f, fun a b hab => OrderHomClass.mono f hab⟩
+  hasDeriv := by
+    refine ⟨PartOrd.ofHom ⟨fun (l, dl) => f dl, ?_⟩, fun _ _ ⟨⟩ => ⟨⟨⟩, ?_⟩⟩
+    · intro (x₁, dx₁) (x₁, dx₂) ⟨h₁, h₂⟩
+      exact OrderHomClass.mono f h₂
+    · simp [U.obj]
+      rfl
+
+def U : SemilatSupCat ⥤ Change where
+  obj := U.obj
+  map := U.map
+
+def bot {L : SemilatSupCat} : terminal ⟶ U.obj L where
+  base := PartOrd.ofHom ⟨fun ⟨⟩ => ⊥, fun _ _ _ => le_rfl⟩
+  hasDeriv :=
+    ⟨PartOrd.ofHom ⟨fun (⟨⟩, ⟨⟩) => ⊥, fun _ _ _ => le_rfl⟩,
+      fun ⟨⟩ ⟨⟩ ⟨⟩ => ⟨⟨⟩, (bot_sup_eq (α := L.X) ⊥).symm⟩⟩
+
+set_option pp.structureInstances false in
+set_option pp.proofs true in
+
+def sup {L : SemilatSupCat} : (U.obj L).prod (U.obj L) ⟶ U.obj L where
+  base := PartOrd.ofHom
+    ⟨fun (l₁, l₂) => l₁ ⊔ l₂, fun _ _ ⟨hl, hm⟩ =>
+      sup_le_iff.mpr ⟨le_sup_of_le_left hl, le_sup_of_le_right hm⟩⟩
+  hasDeriv :=
+    ⟨PartOrd.ofHom ⟨fun (_, (dl₁, dl₂)) => dl₁ ⊔ dl₂, fun _ _ ⟨_, ⟨hm₁, hm₂⟩⟩ =>
+      sup_le_iff.mpr ⟨le_sup_of_le_left hm₁, le_sup_of_le_right hm₂⟩⟩, by
+      intro (l₁, l₂) (dl₁, dl₂) hl
+      refine ⟨⟨⟩, ?_⟩
+      simp only [U.obj, Change.prod]
+      change PartOrd.of L at l₁ l₂ dl₁ dl₂
+      change _ ⊔ _ = (l₁ ⊔ l₂) ⊔ (dl₁ ⊔ dl₂)
+      sorry
+      ⟩
 
 end Section9
 
