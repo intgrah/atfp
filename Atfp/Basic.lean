@@ -438,16 +438,11 @@ def initial : Algebra N where
   a := μN
   str := in'
 
-def initial_isInitial : Limits.IsInitial initial := by
-  constructor
-  case desc =>
-    intro ⟨⟨A, f⟩, _⟩
-    exact ⟨Nat.foldO f, Nat.foldO_str.symm⟩
-  case fac => simp
-  case uniq =>
+def initial.isInitial : Limits.IsInitial initial :=
+  Limits.IsInitial.ofUniqueHom
+    (fun ⟨A, f⟩ => ⟨Nat.foldO f, Nat.foldO_str.symm⟩) <| by
     -- Suppose that we have another map h
-    intro ⟨⟨A, f⟩, _⟩ ⟨h, hh⟩
-    simp only [forall_const]
+    intro ⟨A, f⟩ ⟨h, hh⟩
     congr 1
     -- We establish uniqueness by showing that necessarily h = Nat.foldO f
     change h = Nat.foldO f
@@ -472,8 +467,8 @@ def initial_isInitial : Limits.IsInitial initial := by
     show h x = Nat.foldO f x
     -- We first note that x : μN means that there exists an n : ℕ such that x : N.obj^[n] 0
     -- have : ∃ n : ℕ, x = n := ⟨x, rfl⟩
-    induction x
-    case zero =>
+    induction x with
+    | zero =>
       calc h .zero
           = (f ∘ N.map h ∘ out) .zero := by rw [h₁]
         _ = (f ∘ N.map h) (out .zero) := rfl
@@ -485,7 +480,7 @@ def initial_isInitial : Limits.IsInitial initial := by
         _ = (f ∘ N.map (Nat.foldO f)) (out .zero) := rfl
         _ = (f ∘ N.map (Nat.foldO f) ∘ out) .zero := rfl
         _ = Nat.foldO f .zero := rfl
-    case succ k ih =>
+    | succ k ih =>
       calc h (.succ k)
           = (f ∘ N.map h ∘ out) (.succ k) := by rw [h₁]
         _ = (f ∘ N.map h) (out (.succ k)) := rfl
@@ -1219,8 +1214,8 @@ inductive Tm : Type u
   | sup (L : LatTy) (e₁ e₂ : Tm)
   | for (e₁ e₂ : Tm)
   | one (e : Tm)
-  | discrete (e : Tm)
-  | discrete_elim (e₁ e₂ : Tm)
+  | disc (e : Tm)
+  | let (e₁ e₂ : Tm)
   | fix (L : LatTy) (e : Tm)
 
 inductive Qualifier
@@ -1258,7 +1253,7 @@ notation "π₂" => Tm.snd
 notation "ι₁" => Tm.inl
 notation "ι₂" => Tm.inr
 instance : Singleton Tm Tm := ⟨Tm.one⟩
-notation "[" e "]ᵈ" => Tm.discrete e
+notation "[" e "]ᵈ" => Tm.disc e
 
 notation "[" Γ "]ᵈ" => Ctx.disc Γ
 
@@ -1302,13 +1297,13 @@ inductive HasType : Ctx → Tm → Ty → Type u
     (((.none, A₁) :: Γ) ⊢ e₁ : C) →
     (((.none, A₂) :: Γ) ⊢ e₂ : C) →
     (Γ ⊢ .case e e₁ e₂ : C)
-  | discrete_intro {Γ} e A :
+  | disc_intro {Γ} e A :
     ([Γ]ᵈ ⊢ e : A) →
     (Γ ⊢ [e]ᵈ : [A]ᵈ)
-  | discrete_elim {Γ} e₁ e₂ A C :
+  | disc_elim {Γ} e₁ e₂ A C :
     (Γ ⊢ e₁ : [A]ᵈ) →
     (((.D, A) :: Γ) ⊢ e₂ : C) →
-    (Γ ⊢ .discrete_elim e₁ e₂ : C)
+    (Γ ⊢ .let e₁ e₂ : C)
   | bot_intro {Γ} L :
     (Γ ⊢ .bot L : L)
   | one_intro {Γ} e (T : FinTy) :
