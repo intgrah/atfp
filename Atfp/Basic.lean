@@ -5,12 +5,17 @@ import Mathlib.CategoryTheory.Category.Basic
 import Mathlib.CategoryTheory.Category.Pointed
 import Mathlib.CategoryTheory.Category.RelCat
 import Mathlib.CategoryTheory.Endofunctor.Algebra
+import Mathlib.CategoryTheory.Functor.Currying
+import Mathlib.CategoryTheory.Functor.OfSequence
 import Mathlib.CategoryTheory.Limits.Shapes.Terminal
+import Mathlib.CategoryTheory.Limits.Shapes.FunctorToTypes
 import Mathlib.CategoryTheory.Limits.Types.Coproducts
 import Mathlib.CategoryTheory.Limits.Types.Products
 import Mathlib.CategoryTheory.Monad.Basic
 import Mathlib.CategoryTheory.Monoidal.Cartesian.Basic
 import Mathlib.CategoryTheory.Monoidal.Closed.Basic
+import Mathlib.CategoryTheory.Monoidal.FunctorCategory
+import Mathlib.CategoryTheory.Monoidal.Types.Basic
 import Mathlib.CategoryTheory.Types.Basic
 import Mathlib.Computability.ContextFreeGrammar
 import Mathlib.Data.Matrix.Basic
@@ -554,46 +559,23 @@ inductive PolynomialFunctor where
   | prod (F G : PolynomialFunctor)
   | coprod (F G : PolynomialFunctor)
 
+namespace PolynomialFunctor
+
 set_option hygiene false in
 notation "〚" F "〛" => PolynomialFunctor.denotation F
 
-def PolynomialFunctor.denotation : PolynomialFunctor → Type u ⥤ Type u
+def denotation : PolynomialFunctor → Type u ⥤ Type u
   | id => 𝟭 (Type u)
   | const A => Functor.const (Type u) |>.obj A
-  | prod F G => {
-      obj X := 〚F〛.obj X × 〚G〛.obj X
-      map f := Prod.map (〚F〛.map f) (〚G〛.map f)
-      map_id := by
-        intro
-        simp
-        rfl
-      map_comp := by
-        intros
-        simp only [Functor.map_comp]
-        rfl
-    }
-  | coprod F G => {
-      obj X := 〚F〛.obj X ⊕ 〚G〛.obj X
-      map f := Sum.map (〚F〛.map f) (〚G〛.map f)
-      map_id := by
-        intro
-        simp only [CategoryTheory.Functor.map_id]
-        ext (inl | inr)
-        · simp only [Sum.map_inl, types_id_apply]
-        · simp only [Sum.map_inr, types_id_apply]
-      map_comp := by
-        intros
-        ext
-        simp only [Functor.map_comp, types_comp_apply, Sum.map_map]
-        rfl
-    }
+  | prod F G => FunctorToTypes.prod 〚F〛 〚G〛
+  | coprod F G => FunctorToTypes.coprod 〚F〛 〚G〛
 
 def μ (F : PolynomialFunctor.{u}) :=
   Limits.colimit 〚F〛
 
 /-! Lemma 3.4.2 -/
 
-def PolynomialFunctor.monotone {α β} (F : PolynomialFunctor) (f : α ↪ β) :
+def monotone {α β} (F : PolynomialFunctor) (f : α ↪ β) :
     〚F〛.obj α ↪ 〚F〛.obj β where
   toFun := 〚F〛.map f
   inj' := by
@@ -602,26 +584,27 @@ def PolynomialFunctor.monotone {α β} (F : PolynomialFunctor) (f : α ↪ β) :
     | const A => intro x y h; exact h
     | prod F G ihF ihG =>
       intro ⟨a₁, b₁⟩ ⟨a₂, b₂⟩ h
-      simp only [denotation, Prod.map, Prod.mk.injEq] at h ⊢
+      simp only [denotation, FunctorToTypes.prod, Prod.mk.injEq] at h ⊢
       exact ⟨ihF h.1, ihG h.2⟩
     | coprod F G ihF ihG =>
       rintro (a₁ | a₂) (b₁ | b₂) h
       all_goals
-        simp only [denotation, reduceCtorEq,
-          Sum.map_inl, Sum.map_inr,
+        simp only [denotation, FunctorToTypes.coprod, reduceCtorEq,
           Sum.inl.injEq, Sum.inr.injEq] at h
       · exact congrArg Sum.inl (ihF h)
       · exact congrArg Sum.inr (ihG h)
 
 /-! Lemma 3.4.3 -/
 
-def PolynomialFunctor.iterate_embedding (F : PolynomialFunctor) (n : ℕ) :
+def iterate_embedding (F : PolynomialFunctor) (n : ℕ) :
     〚F〛.obj^[n] PEmpty ↪ 〚F〛.obj^[n + 1] PEmpty := by
   induction n with
   | zero => exact ⟨PEmpty.elim, fun x => PEmpty.elim x⟩
   | succ n ih =>
     rw [Function.iterate_succ_apply', Function.iterate_succ_apply']
     exact F.monotone ih
+
+end PolynomialFunctor
 
 end Section4
 
@@ -1543,7 +1526,7 @@ example : Change where
   X := PartOrd.of (Fin 100)
   Δ := PartOrd.of ℕ
   V := {(n, k) : Fin 100 × ℕ | n + k < 100}
-  update := fun ⟨(n, k), h⟩ => ⟨n + k, by rw [Set.mem_setOf_eq] at h; omega⟩
+  update | ⟨(n, k), h⟩ => ⟨n + k, by rw [Set.mem_setOf_eq] at h; omega⟩
   update_monotone := by
     simp only [Subtype.forall, Prod.forall]
     intro ⟨n, hn⟩ k h
@@ -1985,9 +1968,6 @@ def bot {L : SemilatSupCat} : terminal ⟶ U.obj L where
     ⟨PartOrd.ofHom ⟨fun (⟨⟩, ⟨⟩) => ⊥, fun _ _ _ => le_rfl⟩,
       fun ⟨⟩ ⟨⟩ ⟨⟩ => ⟨⟨⟩, (bot_sup_eq (α := L.X) ⊥).symm⟩⟩
 
-set_option pp.structureInstances false in
-set_option pp.proofs true in
-
 def sup {L : SemilatSupCat} : (U.obj L).prod (U.obj L) ⟶ U.obj L where
   base := PartOrd.ofHom
     ⟨fun (l₁, l₂) => l₁ ⊔ l₂, fun _ _ ⟨hl, hm⟩ =>
@@ -2019,58 +1999,154 @@ end Chapter5
 
 section Chapter6
 
+section Section1
+
 universe u
 
-namespace Adamek
+/-! Lemma 6.1.1 -/
 
-variable (F : Type u ⥤ Type u)
+#check colimit.desc_extend
 
-def step : ∀ n, F.obj^[n] PEmpty → F.obj^[n + 1] PEmpty
-  | 0 => PEmpty.elim
-  | n + 1 => by
-    rw [Function.iterate_succ_apply', Function.iterate_succ_apply']
-    exact F.map (step n)
+/-! Definition 6.1.2 -/
 
-def mapLE {m : ℕ} : (n : ℕ) → m ≤ n → (F.obj^[m] PEmpty → F.obj^[n] PEmpty)
-  | 0, h => (Nat.le_zero.mp h) ▸ id
-  | n + 1, h =>
-    if heq : m = n + 1 then heq ▸ id
-    else step F n ∘ mapLE n (by omega)
+#check PreservesColimitsOfShape ℕ
 
-theorem mapLE_trans {a b c : ℕ} (hab : a ≤ b) (hbc : b ≤ c) (x : F.obj^[a] PEmpty) :
-    mapLE F c (hab.trans hbc) x = mapLE F c hbc (mapLE F b hab x) := by
-  induction c generalizing a b with
-  | zero =>
-    obtain rfl := Nat.le_zero.mp hbc
-    obtain rfl := Nat.le_zero.mp hab
-    rfl
-  | succ k ih =>
-    by_cases hb : b = k + 1
-    · subst hb
-      by_cases ha : a = k + 1
-      · subst ha; simp only [mapLE, dite_true]; rfl
-      · simp only [mapLE, dite_true, dif_neg ha, Function.comp_apply]; rfl
-    · by_cases ha : a = k + 1
-      · omega
-      · simp only [mapLE, dif_neg ha, dif_neg hb, Function.comp_apply]
-        exact congrArg (step F k) (ih hab (by omega) x)
+/-! Theorem 6.1.3 -/
 
-def chain : ℕ ⥤ Type u where
-  obj n := F.obj^[n] PEmpty
-  map f := mapLE F _ f.down.down
-  map_id n := by
-    ext x
-    simp only [types_id_apply]
-    cases n with
-    | zero => simp [mapLE]
-    | succ n => simp [mapLE]
-  map_comp {a b c} f g := by
-    ext x
-    simp only [types_comp_apply]
-    exact mapLE_trans F f.down.down g.down.down x
+noncomputable section Adámek
 
-def μ := colimit (chain F)
+variable {𝓒 : Type u} [Category.{u} 𝓒] [HasInitial 𝓒]
 
-end Adamek
+
+def chain.obj (F : 𝓒 ⥤ 𝓒) : ℕ → 𝓒
+  | 0 => ⊥_ 𝓒
+  | i + 1 => F.obj (obj F i)
+
+def chain.step (F : 𝓒 ⥤ 𝓒) : ∀ n, (obj F n ⟶ obj F (n + 1))
+  | 0 => initial.to _
+  | i + 1 => F.map (step F i)
+
+variable {F : 𝓒 ⥤ 𝓒}
+
+def chain : ℕ ⥤ 𝓒 := Functor.ofSequence (chain.step F)
+
+open Functor.OfSequence (map map_id map_comp map_le_succ) in
+lemma chain.map_succ {i j : ℕ} (h : i ≤ j) :
+    chain.map (homOfLE (Nat.succ_le_succ h)) = F.map (chain.map (homOfLE h)) := by
+  let g := step F
+  change map (fun n => F.map (g n)) i j h = F.map (map g i j h)
+  induction j, h using Nat.le_induction with
+  | base => simp [map_id]
+  | succ j hij ih =>
+    calc map (fun n => F.map (g n)) i (j + 1) _
+        = map (fun n => F.map (g n)) i j hij ≫ map (fun n => F.map (g n)) j (j + 1) _ :=
+          map_comp _ i j _ hij _
+      _ = map (fun n => F.map (g n)) i j hij ≫ F.map (g j) := by rw [map_le_succ]
+      _ = F.map (map g i j hij) ≫ F.map (g j) := by rw [ih]
+      _ = F.map (map g i j hij ≫ g j) := (F.map_comp _ _).symm
+      _ = F.map (map g i j hij ≫ map g j (j + 1) (Nat.le_succ j)) := by rw [map_le_succ]
+      _ = F.map (map g i (j + 1) _) := by rw [← map_comp]
+
+variable [PreservesColimitsOfShape ℕ F] [HasColimitsOfShape ℕ 𝓒]
+
+def μ_iso :
+    let μF := colimit (chain (F := F))
+    μF ≅ F.obj μF := by
+  let D : ℕ ⥤ 𝓒 := chain (F := F)
+  -- Write μF for the ω-colimit of this diagram
+  let μF := colimit (chain (F := F))
+  let ccμF : Cocone D := colimit.cocone D
+  have hccμF : IsColimit ccμF := colimit.isColimit D
+  -- and ι i : D.obj i ⟶ μF for the injections.
+  let ι i : D.obj i ⟶ μF := colimit.ι D i
+  -- Now, we show that μF ≅ F.obj μF.
+  change μF ≅ F.obj μF
+  -- Next, we consider the diagram obtained by applying `F` to this diagram:
+  let FD := D ⋙ F
+  -- Since `F` preserves colimits, this means that `⟨F.obj μF, fun i => F.map (ι i)⟩`
+  let ccFμF : Cocone FD := F.mapCocone ccμF
+  -- is the ω-colimit of this diagram.
+  have hccFμF : IsColimit ccFμF := isColimitOfPreserves F hccμF
+  -- Next, construct the cocone `⟨μF, fun i => ι (i+1)⟩` over the second diagram.
+  let ccμF' : Cocone FD :=
+    ⟨μF, fun i => ι (i + 1), fun i j f =>
+      calc F.map (D.map f) ≫ ι (j + 1)
+          = F.map (D.map (homOfLE f.le)) ≫ ι (j + 1) := rfl
+        _ = D.map (homOfLE (Nat.succ_le_succ f.le)) ≫ ι (j + 1) := by rw [chain.map_succ]
+        _ = D.map (homOfLE (Nat.succ_le_succ f.le)) ≫ ccμF.ι.app (j + 1) := rfl
+        _ = ccμF.ι.app (i + 1) := ccμF.w _
+        _ = ι (i + 1) := rfl
+        _ = ι (i + 1) ≫ 𝟙 μF := (Category.comp_id _).symm⟩
+  -- The universal property of `F.obj μF` gives us a map
+  let in' : F.obj μF ⟶ μF := hccFμF.desc ccμF'
+  -- such that
+  have hin : ∀ i, F.map (ι i) ≫ in' = ι (i + 1) := hccFμF.fac ccμF'
+  -- Next, construct the cocone
+  let c : ∀ i, D.obj i ⟶ F.obj μF
+    | 0 => initial.to (F.obj μF)
+    | i + 1 => F.map (ι i)
+  let ccFμF' : Cocone D := ⟨F.obj μF, c, by
+    rintro (_ | i) (_ | j) f
+    · apply initial.hom_ext
+    · apply initial.hom_ext
+    · exact absurd f.le (Nat.not_succ_le_zero _)
+    · let h := Nat.le_of_succ_le_succ f.le
+      calc D.map f ≫ F.map (ι j)
+          = D.map (homOfLE f.le) ≫ F.map (ι j) := rfl
+        _ = F.map (D.map (homOfLE h)) ≫ F.map (ι j) := by rw [chain.map_succ]
+        _ = F.map (D.map (homOfLE h) ≫ ι j) := F.map_comp _ _ |>.symm
+        _ = F.map (D.map (homOfLE h) ≫ ccμF.ι.app j) := rfl
+        _ = F.map (ccμF.ι.app i) := congrArg F.map (ccμF.w _)
+        _ = F.map (ι i) := rfl
+        _ = F.map (ι i) ≫ 𝟙 (F.obj μF) := (Category.comp_id _).symm⟩
+  -- By the universal property of `μF`, we have a map
+  let out : μF ⟶ F.obj μF := hccμF.desc ccFμF'
+  -- with the property that
+  have hout : ∀ i, ι i ≫ out = c i := hccμF.fac ccFμF'
+  -- Unrolling the definition of `c i`, we get that
+  have hout' {i} : ι (i + 1) ≫ out = F.map (ι i) := hout (i + 1)
+  -- Putting the two together, we get the equations
+  have h₁ {k} : ι (k + 1) ≫ out ≫ in' = ι (k + 1) :=
+    calc ι (k + 1) ≫ out ≫ in'
+        = (ι (k + 1) ≫ out) ≫ in' := Category.assoc _ _ _ |>.symm
+      _ = F.map (ι k) ≫ in' := congrArg (· ≫ in') hout'
+      _ = ι (k + 1) := hin k
+  have h₂ {n} : F.map (ι n) ≫ in' ≫ out = F.map (ι n) :=
+    calc F.map (ι n) ≫ in' ≫ out
+        = (F.map (ι n) ≫ in') ≫ out := Category.assoc _ _ _ |>.symm
+      _ = (ι (n + 1)) ≫ out := congrArg (· ≫ out) (hin n)
+      _ = F.map (ι n) := hout (n + 1)
+  -- The universal property of ω-colimits lets us conclude that
+  have h₃ : in' ≫ out = 𝟙 (F.obj μF) := by
+    apply hccFμF.hom_ext
+    intro i
+    calc F.map (ι i) ≫ in' ≫ out
+        = F.map (ι i) := h₂
+      _ = F.map (ι i) ≫ 𝟙 (F.obj μF) := (Category.comp_id _).symm
+  -- The universal property of ω-colimits plus initiality of ⊥_ 𝓒 lets us conclude that
+  have h₄ : out ≫ in' = 𝟙 μF := by
+    apply hccμF.hom_ext
+    intro
+    | 0 =>
+      calc ι 0 ≫ out ≫ in'
+          = (ι 0 ≫ out) ≫ in' := (Category.assoc _ _ _).symm
+        _ = c 0 ≫ in' := congrArg (· ≫ in') (hout 0)
+        _ = ι 0 := initial.hom_ext _ _
+        _ = ι 0 ≫ 𝟙 μF := (Category.comp_id _).symm
+    | k + 1 =>
+      calc ι (k + 1) ≫ out ≫ in'
+          = ι (k + 1) := h₁
+        _ = ι (k + 1) ≫ 𝟙 μF := (Category.comp_id _).symm
+  -- Hence they form an isomorphism.
+  exact ⟨out, in', h₄, h₃⟩
+
+end Adámek
+
+/-! Theorem 6.1.7 -/
+
+#check Endofunctor.Algebra.Initial.strInv
+#check Endofunctor.Algebra.Initial.str_isIso
+
+end Section1
 
 end Chapter6
