@@ -2011,12 +2011,13 @@ universe u
 
 #check PreservesColimitsOfShape ℕ
 
+open Endofunctor (Algebra)
+
 /-! Theorem 6.1.3 -/
 
 noncomputable section Adámek
 
 variable {𝓒 : Type u} [Category.{u} 𝓒] [HasInitial 𝓒]
-
 
 def chain.obj (F : 𝓒 ⥤ 𝓒) : ℕ → 𝓒
   | 0 => ⊥_ 𝓒
@@ -2026,13 +2027,13 @@ def chain.step (F : 𝓒 ⥤ 𝓒) : ∀ n, (obj F n ⟶ obj F (n + 1))
   | 0 => initial.to _
   | i + 1 => F.map (step F i)
 
-variable {F : 𝓒 ⥤ 𝓒}
+def chain (F : 𝓒 ⥤ 𝓒) : ℕ ⥤ 𝓒 := Functor.ofSequence (chain.step F)
 
-def chain : ℕ ⥤ 𝓒 := Functor.ofSequence (chain.step F)
+variable {F : 𝓒 ⥤ 𝓒}
 
 open Functor.OfSequence (map map_id map_comp map_le_succ) in
 lemma chain.map_succ {i j : ℕ} (h : i ≤ j) :
-    chain.map (homOfLE (Nat.succ_le_succ h)) = F.map (chain.map (homOfLE h)) := by
+    (chain F).map (homOfLE (Nat.succ_le_succ h)) = F.map ((chain F).map (homOfLE h)) := by
   let g := step F
   change map (fun n => F.map (g n)) i j h = F.map (map g i j h)
   induction j, h using Nat.le_induction with
@@ -2049,43 +2050,43 @@ lemma chain.map_succ {i j : ℕ} (h : i ≤ j) :
 
 variable [PreservesColimitsOfShape ℕ F] [HasColimitsOfShape ℕ 𝓒]
 
-def μ_iso :
-    let μF := colimit (chain (F := F))
-    μF ≅ F.obj μF := by
-  let D : ℕ ⥤ 𝓒 := chain (F := F)
-  -- Write μF for the ω-colimit of this diagram
-  let μF := colimit (chain (F := F))
+-- Write μ F for the ω-colimit of this diagram
+def μ (F : 𝓒 ⥤ 𝓒) := colimit (chain F)
+
+def μ_iso : True := by
+  let D : ℕ ⥤ 𝓒 := chain F
   let ccμF : Cocone D := colimit.cocone D
   have hccμF : IsColimit ccμF := colimit.isColimit D
-  -- and ι i : D.obj i ⟶ μF for the injections.
-  let ι i : D.obj i ⟶ μF := colimit.ι D i
-  -- Now, we show that μF ≅ F.obj μF.
-  change μF ≅ F.obj μF
+  -- and ι i : D.obj i ⟶ μ F for the injections.
+  let ι i : D.obj i ⟶ μ F := colimit.ι D i
+  -- Now, we show that μ F ≅ F.obj (μ F).
   -- Next, we consider the diagram obtained by applying `F` to this diagram:
   let FD := D ⋙ F
-  -- Since `F` preserves colimits, this means that `⟨F.obj μF, fun i => F.map (ι i)⟩`
+  -- Since `F` preserves colimits, this means that `⟨F.obj (μ F), fun i => F.map (ι i)⟩`
   let ccFμF : Cocone FD := F.mapCocone ccμF
   -- is the ω-colimit of this diagram.
-  have hccFμF : IsColimit ccFμF := isColimitOfPreserves F hccμF
+  let hccFμF : IsColimit ccFμF := isColimitOfPreserves F hccμF
   -- Next, construct the cocone `⟨μF, fun i => ι (i+1)⟩` over the second diagram.
-  let ccμF' : Cocone FD :=
-    ⟨μF, fun i => ι (i + 1), fun i j f =>
-      calc F.map (D.map f) ≫ ι (j + 1)
-          = F.map (D.map (homOfLE f.le)) ≫ ι (j + 1) := rfl
-        _ = D.map (homOfLE (Nat.succ_le_succ f.le)) ≫ ι (j + 1) := by rw [chain.map_succ]
-        _ = D.map (homOfLE (Nat.succ_le_succ f.le)) ≫ ccμF.ι.app (j + 1) := rfl
-        _ = ccμF.ι.app (i + 1) := ccμF.w _
-        _ = ι (i + 1) := rfl
-        _ = ι (i + 1) ≫ 𝟙 μF := (Category.comp_id _).symm⟩
-  -- The universal property of `F.obj μF` gives us a map
-  let in' : F.obj μF ⟶ μF := hccFμF.desc ccμF'
+  let ccμF' : Cocone FD := ⟨μ F, fun i => ι (i + 1), ?naturality⟩
+  case naturality =>
+    intro i j f
+    calc F.map (D.map f) ≫ ι (j + 1)
+        = F.map (D.map (homOfLE f.le)) ≫ ι (j + 1) := rfl
+      _ = D.map (homOfLE (Nat.succ_le_succ f.le)) ≫ ι (j + 1) := by rw [chain.map_succ]
+      _ = D.map (homOfLE (Nat.succ_le_succ f.le)) ≫ ccμF.ι.app (j + 1) := rfl
+      _ = ccμF.ι.app (i + 1) := ccμF.w _
+      _ = ι (i + 1) := rfl
+      _ = ι (i + 1) ≫ 𝟙 (μ F) := (Category.comp_id _).symm
+  -- The universal property of `F.obj (μ F)` gives us a map
+  let in' : F.obj (μ F) ⟶ μ F := hccFμF.desc ccμF'
   -- such that
   have hin : ∀ i, F.map (ι i) ≫ in' = ι (i + 1) := hccFμF.fac ccμF'
   -- Next, construct the cocone
-  let c : ∀ i, D.obj i ⟶ F.obj μF
-    | 0 => initial.to (F.obj μF)
+  let c : ∀ i, D.obj i ⟶ F.obj (μ F)
+    | 0 => initial.to (F.obj (μ F))
     | i + 1 => F.map (ι i)
-  let ccFμF' : Cocone D := ⟨F.obj μF, c, by
+  let ccFμF' : Cocone D := ⟨F.obj (μ F), c, ?naturality⟩
+  case naturality =>
     rintro (_ | i) (_ | j) f
     · apply initial.hom_ext
     · apply initial.hom_ext
@@ -2098,9 +2099,9 @@ def μ_iso :
         _ = F.map (D.map (homOfLE h) ≫ ccμF.ι.app j) := rfl
         _ = F.map (ccμF.ι.app i) := congrArg F.map (ccμF.w _)
         _ = F.map (ι i) := rfl
-        _ = F.map (ι i) ≫ 𝟙 (F.obj μF) := (Category.comp_id _).symm⟩
+        _ = F.map (ι i) ≫ 𝟙 (F.obj (μ F)) := (Category.comp_id _).symm
   -- By the universal property of `μF`, we have a map
-  let out : μF ⟶ F.obj μF := hccμF.desc ccFμF'
+  let out : μ F ⟶ F.obj (μ F) := hccμF.desc ccFμF'
   -- with the property that
   have hout : ∀ i, ι i ≫ out = c i := hccμF.fac ccFμF'
   -- Unrolling the definition of `c i`, we get that
@@ -2117,14 +2118,14 @@ def μ_iso :
       _ = (ι (n + 1)) ≫ out := congrArg (· ≫ out) (hin n)
       _ = F.map (ι n) := hout (n + 1)
   -- The universal property of ω-colimits lets us conclude that
-  have h₃ : in' ≫ out = 𝟙 (F.obj μF) := by
+  have h₃ : in' ≫ out = 𝟙 (F.obj (μ F)) := by
     apply hccFμF.hom_ext
     intro i
     calc F.map (ι i) ≫ in' ≫ out
         = F.map (ι i) := h₂
-      _ = F.map (ι i) ≫ 𝟙 (F.obj μF) := (Category.comp_id _).symm
-  -- The universal property of ω-colimits plus initiality of ⊥_ 𝓒 lets us conclude that
-  have h₄ : out ≫ in' = 𝟙 μF := by
+      _ = F.map (ι i) ≫ 𝟙 (F.obj (μ F)) := (Category.comp_id _).symm
+  -- The universal property of ω-colimits plus initiality of `⊥_ 𝓒` lets us conclude that
+  have h₄ : out ≫ in' = 𝟙 (μ F) := by
     apply hccμF.hom_ext
     intro
     | 0 =>
@@ -2132,20 +2133,144 @@ def μ_iso :
           = (ι 0 ≫ out) ≫ in' := (Category.assoc _ _ _).symm
         _ = c 0 ≫ in' := congrArg (· ≫ in') (hout 0)
         _ = ι 0 := initial.hom_ext _ _
-        _ = ι 0 ≫ 𝟙 μF := (Category.comp_id _).symm
+        _ = ι 0 ≫ 𝟙 (μ F) := (Category.comp_id _).symm
     | k + 1 =>
       calc ι (k + 1) ≫ out ≫ in'
           = ι (k + 1) := h₁
-        _ = ι (k + 1) ≫ 𝟙 μF := (Category.comp_id _).symm
+        _ = ι (k + 1) ≫ 𝟙 (μ F) := (Category.comp_id _).symm
   -- Hence they form an isomorphism.
-  exact ⟨out, in', h₄, h₃⟩
+  have : μ F ≅ F.obj (μ F) := ⟨out, in', h₄, h₃⟩
+
+  -- Now, we need to show that `⟨μ F, in'⟩` is an initial F-algebra.
+  have h : IsInitial (C := Algebra F) ⟨μ F, in'⟩ := by
+    apply IsInitial.ofUniqueHom ?existence ?uniqueness
+    all_goals
+      -- Suppose that `⟨A, α⟩` is an F-algebra.
+      intro ⟨A, α⟩
+      -- To establish initiality, we need to show that there is a
+      -- unique algebra map `αFold : ⟨μ F, in'⟩ ⟶ ⟨A, α⟩`.
+      -- We establish existence as follows:
+      -- We now recursively define maps `f n : D.obj n ⟶ A` as follows.
+      let f : ∀ n, D.obj n ⟶ A :=
+        Nat.rec (initial.to A) (fun n fn => F.map fn ≫ α)
+      -- We want to show that these maps make `A` into a cocone over the ω-colimit diagram.
+      let ccA : Cocone D := ⟨A, f, ?ht⟩
+      case ht =>
+        -- It suffices to show the following family of diagrams commute:
+        have triangle n : f n = chain.step F n ≫ f (n + 1) := by
+          -- Using the definition of f (n + 1), this is equivalent to showing:
+          change f n = chain.step F n ≫ F.map (f n) ≫ α
+          induction n with
+          | zero => exact initial.to_comp _ |>.symm
+          | succ n ih =>
+            calc f (n + 1)
+                = F.map (f n) ≫ α := rfl
+              _ = F.map (chain.step F n ≫ F.map (f n) ≫ α) ≫ α := by rw [← ih]
+              _ = F.map (chain.step F n ≫ f (n + 1)) ≫ α := rfl
+              _ = (F.map (chain.step F n) ≫ F.map (f (n + 1))) ≫ α := by rw [F.map_comp]
+              _ = F.map (chain.step F n) ≫ F.map (f (n + 1)) ≫ α := Category.assoc _ _ _
+              _ = chain.step F (n + 1) ≫ F.map (f (n + 1)) ≫ α := rfl
+        intro x y ⟨⟨hxy⟩⟩
+        simp only [Functor.const_obj_obj, Functor.const_obj_map, Category.comp_id]
+        induction y, hxy using Nat.le_induction with
+        | base =>
+          convert Category.id_comp (f x)
+          sorry
+        | succ k hxk ih =>
+          change D.map _ ≫ f (k + 1) = f x
+          rw [← ih]
+          show D.map _ ≫ f (k + 1) = D.map ⟨⟨hxk⟩⟩ ≫ f k
+          sorry
+      let αFold : μ F ⟶ A := hccμF.desc ccA
+    case existence =>
+      have hαFold : ∀ j, ι j ≫ αFold = f j := hccμF.fac ccA
+      -- To show that this map is an F-algebra homomorphism,
+      change Algebra.Hom ⟨μ F, in'⟩ ⟨A, α⟩
+      refine ⟨αFold, ?compat⟩
+      -- We need to show that
+      change F.map αFold ≫ α = in' ≫ αFold
+      -- First, note that applying `F` to the `f i` yields a cocone over the second diagram
+      let ccFA : Cocone FD := F.mapCocone ccA
+      -- whose colimit is `F.obj (μ F)`.
+      have : IsColimit (ccFμF : Cocone FD) := hccFμF
+      have : ccFμF.pt = F.obj (μ F) := rfl
+      -- Since `F` preserves ω-colimits,
+      -- `F.map αFold : F.obj (μ F) ⟶ F.obj A` is the mediating morphism.
+      have hdccFA : hccFμF.desc ccFA = F.map αFold :=
+        preserves_desc_mapCocone F D ccμF ccA hccμF
+      -- Therefore, the mediating morphism of the cocone
+      let naturality i j g : FD.map g ≫ F.map (f j) ≫ α = (F.map (f i) ≫ α) ≫ 𝟙 A :=
+        calc F.map (D.map g) ≫ (F.map (f j) ≫ α)
+            = (F.map (D.map g) ≫ F.map (f j)) ≫ α := by rw [Category.assoc]
+          _ = F.map (D.map g ≫ f j) ≫ α := by rw [F.map_comp]
+          _ = F.map (f i) ≫ α := by rw [ccA.w]
+          _ = (F.map (f i) ≫ α) ≫ 𝟙 A := Category.comp_id _ |>.symm
+      let ccA' : Cocone FD := ⟨A, fun i => F.map (f i) ≫ α, naturality⟩
+      -- must equal `F.map αFold ≫ α`.
+      have hdccA' : hccFμF.desc ccA' = F.map αFold ≫ α := by
+        rw [← hdccFA]
+        apply hccFμF.hom_ext
+        intro
+        rw [hccFμF.fac, IsColimit.fac_assoc]
+        rfl
+      -- Observe that the cocone `ccA'` is equal to
+      let ccA'' : Cocone FD := ⟨A, fun i => f (i + 1), naturality⟩
+      have : ccA' = ccA'' := rfl
+      -- Thus we can extend it to a cocone over the original diagram.
+      have hext : ∀ i, ccA.ι.app (i + 1) = ccA''.ι.app i := fun i => rfl
+      -- Therefore
+      have : hccFμF.desc ccA'' = in' ≫ αFold := by
+        apply hccFμF.hom_ext
+        intro i
+        calc F.map (ι i) ≫ hccFμF.desc ccA''
+            = ccA''.ι.app i := hccFμF.fac ccA'' i
+          _ = f (i + 1) := rfl
+          _ = ι (i + 1) ≫ αFold := (hαFold (i + 1)).symm
+          _ = (F.map (ι i) ≫ in') ≫ αFold := by rw [← hin i]
+          _ = F.map (ι i) ≫ in' ≫ αFold := Category.assoc _ _ _
+      change F.map αFold ≫ α = in' ≫ αFold
+      rw [← hdccA', ← this]
+    -- Now, we need to establish uniqueness.
+    case uniqueness =>
+      -- Suppose there is another `h : μ F ⟶ A` such that `F.map h ≫ α = in' ≫ h`.
+      intro ⟨h, hh⟩
+      -- Observe that this means
+      have h₅ : h = out ≫ F.map h ≫ α := by
+        rw [hh, ← Category.assoc, h₄, Category.id_comp]
+      -- Now define
+      let h_ n : D.obj n ⟶ A := ι n ≫ h
+      -- We can show by induction that `h n = f n`.
+      have h_f {n} : h_ n = f n := by
+        induction n with
+        | zero =>
+          -- Observe that
+          calc h_ 0
+              = ι 0 ≫ h := rfl
+            _ = initial.to (μ F) ≫ h := congrArg (· ≫ h) (initial.hom_ext _ _)
+            _ = initial.to A := initial.to_comp h
+            _ = f 0 := rfl
+        | succ k ih =>
+          show h_ (k + 1) = f (k + 1)
+          calc h_ (k + 1)
+              = ι (k + 1) ≫ h := rfl
+            _ = ι (k + 1) ≫ out ≫ F.map h ≫ α := by rw [← h₅]
+            _ = F.map (ι k) ≫ F.map h ≫ α := by rw [← Category.assoc, hout']
+            _ = F.map (ι k ≫ h) ≫ α := by rw [← Category.assoc, F.map_comp]
+            _ = F.map (h_ k) ≫ α := rfl
+            _ = F.map (f k) ≫ α := by rw [ih]
+            _ = f (k + 1) := rfl
+      ext
+      -- Then the uniqueness of the mediating morphism means `h = αFold`.
+      change h = αFold
+      exact hccμF.uniq ccA h fun j => h_f
+  trivial
 
 end Adámek
 
 /-! Theorem 6.1.7 -/
 
-#check Endofunctor.Algebra.Initial.strInv
-#check Endofunctor.Algebra.Initial.str_isIso
+#check Algebra.Initial.strInv
+#check Algebra.Initial.str_isIso
 
 end Section1
 
