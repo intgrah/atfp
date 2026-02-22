@@ -1410,7 +1410,7 @@ def LatTy.fix {A : PartOrd} {L : LatTy} (f : [A]ᵈ ⊗ 〚L〛 ⟶ 〚L〛) :
     [A]ᵈ ⟶ 〚L〛 :=
   @PartOrd.ofHom [A]ᵈ 〚L〛 _ _ {
     toFun a := sorry
-    monotone' _ _ ha := by subst ha; rfl
+    monotone' _ _ ha := sorry
   }
 
 set_option hygiene false in
@@ -2033,7 +2033,7 @@ variable {F : 𝓒 ⥤ 𝓒}
 
 open Functor.OfSequence (map map_id map_comp map_le_succ) in
 lemma chain.map_succ {i j : ℕ} (h : i ≤ j) :
-    (chain F).map (homOfLE (Nat.succ_le_succ h)) = F.map ((chain F).map (homOfLE h)) := by
+    (chain F).map ⟨⟨Nat.succ_le_succ h⟩⟩ = F.map ((chain F).map ⟨⟨h⟩⟩) := by
   let g := step F
   change map (fun n => F.map (g n)) i j h = F.map (map g i j h)
   induction j, h using Nat.le_induction with
@@ -2053,6 +2053,8 @@ variable [PreservesColimitsOfShape ℕ F] [HasColimitsOfShape ℕ 𝓒]
 -- Write μ F for the ω-colimit of this diagram
 def μ (F : 𝓒 ⥤ 𝓒) := colimit (chain F)
 
+-- TODO break down into smaller definitions and lemmas
+
 def μ_iso : True := by
   let D : ℕ ⥤ 𝓒 := chain F
   let ccμF : Cocone D := colimit.cocone D
@@ -2067,20 +2069,19 @@ def μ_iso : True := by
   -- is the ω-colimit of this diagram.
   let hccFμF : IsColimit ccFμF := isColimitOfPreserves F hccμF
   -- Next, construct the cocone `⟨μF, fun i => ι (i+1)⟩` over the second diagram.
-  let ccμF' : Cocone FD := ⟨μ F, fun i => ι (i + 1), ?naturality⟩
+  -- The universal property of `F.obj (μ F)` gives us a map
+  let in' : F.obj (μ F) ⟶ μ F := hccFμF.desc ⟨μ F, fun i => ι (i + 1), ?naturality⟩
   case naturality =>
     intro i j f
     calc F.map (D.map f) ≫ ι (j + 1)
-        = F.map (D.map (homOfLE f.le)) ≫ ι (j + 1) := rfl
-      _ = D.map (homOfLE (Nat.succ_le_succ f.le)) ≫ ι (j + 1) := by rw [chain.map_succ]
-      _ = D.map (homOfLE (Nat.succ_le_succ f.le)) ≫ ccμF.ι.app (j + 1) := rfl
+        = F.map (D.map ⟨⟨f.le⟩⟩) ≫ ι (j + 1) := rfl
+      _ = D.map ⟨⟨Nat.succ_le_succ f.le⟩⟩ ≫ ι (j + 1) := by rw [chain.map_succ]
+      _ = D.map ⟨⟨Nat.succ_le_succ f.le⟩⟩ ≫ ccμF.ι.app (j + 1) := rfl
       _ = ccμF.ι.app (i + 1) := ccμF.w _
       _ = ι (i + 1) := rfl
       _ = ι (i + 1) ≫ 𝟙 (μ F) := (Category.comp_id _).symm
-  -- The universal property of `F.obj (μ F)` gives us a map
-  let in' : F.obj (μ F) ⟶ μ F := hccFμF.desc ccμF'
   -- such that
-  have hin : ∀ i, F.map (ι i) ≫ in' = ι (i + 1) := hccFμF.fac ccμF'
+  have hin : ∀ i, F.map (ι i) ≫ in' = ι (i + 1) := hccFμF.fac _
   -- Next, construct the cocone
   let c : ∀ i, D.obj i ⟶ F.obj (μ F)
     | 0 => initial.to (F.obj (μ F))
@@ -2093,10 +2094,10 @@ def μ_iso : True := by
     · exact absurd f.le (Nat.not_succ_le_zero _)
     · let h := Nat.le_of_succ_le_succ f.le
       calc D.map f ≫ F.map (ι j)
-          = D.map (homOfLE f.le) ≫ F.map (ι j) := rfl
-        _ = F.map (D.map (homOfLE h)) ≫ F.map (ι j) := by rw [chain.map_succ]
-        _ = F.map (D.map (homOfLE h) ≫ ι j) := F.map_comp _ _ |>.symm
-        _ = F.map (D.map (homOfLE h) ≫ ccμF.ι.app j) := rfl
+          = D.map ⟨⟨f.le⟩⟩ ≫ F.map (ι j) := rfl
+        _ = F.map (D.map ⟨⟨h⟩⟩) ≫ F.map (ι j) := by rw [chain.map_succ]
+        _ = F.map (D.map ⟨⟨h⟩⟩ ≫ ι j) := F.map_comp _ _ |>.symm
+        _ = F.map (D.map ⟨⟨h⟩⟩ ≫ ccμF.ι.app j) := rfl
         _ = F.map (ccμF.ι.app i) := congrArg F.map (ccμF.w _)
         _ = F.map (ι i) := rfl
         _ = F.map (ι i) ≫ 𝟙 (F.obj (μ F)) := (Category.comp_id _).symm
@@ -2140,7 +2141,6 @@ def μ_iso : True := by
         _ = ι (k + 1) ≫ 𝟙 (μ F) := (Category.comp_id _).symm
   -- Hence they form an isomorphism.
   have : μ F ≅ F.obj (μ F) := ⟨out, in', h₄, h₃⟩
-
   -- Now, we need to show that `⟨μ F, in'⟩` is an initial F-algebra.
   have h : IsInitial (C := Algebra F) ⟨μ F, in'⟩ := by
     apply IsInitial.ofUniqueHom ?existence ?uniqueness
@@ -2156,31 +2156,39 @@ def μ_iso : True := by
       -- We want to show that these maps make `A` into a cocone over the ω-colimit diagram.
       let ccA : Cocone D := ⟨A, f, ?ht⟩
       case ht =>
-        -- It suffices to show the following family of diagrams commute:
-        have triangle n : f n = chain.step F n ≫ f (n + 1) := by
-          -- Using the definition of f (n + 1), this is equivalent to showing:
-          change f n = chain.step F n ≫ F.map (f n) ≫ α
-          induction n with
-          | zero => exact initial.to_comp _ |>.symm
-          | succ n ih =>
-            calc f (n + 1)
-                = F.map (f n) ≫ α := rfl
-              _ = F.map (chain.step F n ≫ F.map (f n) ≫ α) ≫ α := by rw [← ih]
-              _ = F.map (chain.step F n ≫ f (n + 1)) ≫ α := rfl
-              _ = (F.map (chain.step F n) ≫ F.map (f (n + 1))) ≫ α := by rw [F.map_comp]
-              _ = F.map (chain.step F n) ≫ F.map (f (n + 1)) ≫ α := Category.assoc _ _ _
-              _ = chain.step F (n + 1) ≫ F.map (f (n + 1)) ≫ α := rfl
         intro x y ⟨⟨hxy⟩⟩
         simp only [Functor.const_obj_obj, Functor.const_obj_map, Category.comp_id]
-        induction y, hxy using Nat.le_induction with
-        | base =>
-          convert Category.id_comp (f x)
-          sorry
-        | succ k hxk ih =>
-          change D.map _ ≫ f (k + 1) = f x
-          rw [← ih]
-          show D.map _ ≫ f (k + 1) = D.map ⟨⟨hxk⟩⟩ ≫ f k
-          sorry
+        -- It suffices to show the following family of diagrams commute:
+        suffices triangle : ∀ n, f n = chain.step F n ≫ f (n + 1) by
+          induction y, hxy using Nat.le_induction with
+          | base =>
+            calc D.map (𝟙 x) ≫ f x
+                = 𝟙 (D.obj x) ≫ f x := by rw [D.map_id]
+              _ = f x := Category.id_comp (f x)
+          | succ k hxk ih =>
+            calc D.map ⟨⟨hxk.step⟩⟩ ≫ f (k + 1)
+                = D.map (⟨⟨hxk⟩⟩ ≫ ⟨⟨k.le_succ⟩⟩) ≫ f (k + 1) := rfl
+              _ = D.map ⟨⟨hxk⟩⟩ ≫ D.map ⟨⟨k.le_succ⟩⟩ ≫ f (k + 1) := by
+                rw [D.map_comp, Category.assoc]
+              _ = D.map ⟨⟨hxk⟩⟩ ≫ chain.step F k ≫ f (k + 1) := by
+                rw [show D.map ⟨⟨k.le_succ⟩⟩ = chain.step F k from
+                  Functor.ofSequence_map_homOfLE_succ _ k]
+              _ = D.map ⟨⟨hxk⟩⟩ ≫ f k := by rw [triangle k]
+              _ = f x := ih
+        intro n
+        show f n = chain.step F n ≫ f (n + 1)
+        -- Using the definition of f (n + 1), this is equivalent to showing:
+        change f n = chain.step F n ≫ F.map (f n) ≫ α
+        induction n with
+        | zero => exact initial.to_comp _ |>.symm
+        | succ n ih =>
+          calc f (n + 1)
+              = F.map (f n) ≫ α := rfl
+            _ = F.map (chain.step F n ≫ F.map (f n) ≫ α) ≫ α := by rw [← ih]
+            _ = F.map (chain.step F n ≫ f (n + 1)) ≫ α := rfl
+            _ = (F.map (chain.step F n) ≫ F.map (f (n + 1))) ≫ α := by rw [F.map_comp]
+            _ = F.map (chain.step F n) ≫ F.map (f (n + 1)) ≫ α := Category.assoc _ _ _
+            _ = chain.step F (n + 1) ≫ F.map (f (n + 1)) ≫ α := rfl
       let αFold : μ F ⟶ A := hccμF.desc ccA
     case existence =>
       have hαFold : ∀ j, ι j ≫ αFold = f j := hccμF.fac ccA
@@ -2263,7 +2271,7 @@ def μ_iso : True := by
       -- Then the uniqueness of the mediating morphism means `h = αFold`.
       change h = αFold
       exact hccμF.uniq ccA h fun j => h_f
-  trivial
+  exact trivial
 
 end Adámek
 
