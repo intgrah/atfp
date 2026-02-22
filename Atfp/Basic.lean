@@ -2110,14 +2110,58 @@ class ClosedSemiring (α : Type u) extends Semiring α, PartialOrder α, KStar �
 
 /-! Example 5.1.11 -/
 
+
+instance : AddZero Prop where
+  zero := False
+  add := Or
+
+instance : Semiring Prop where
+  add_assoc _ _ _ := propext or_assoc
+  zero_add := false_or
+  add_zero := or_false
+  add_comm _ _ := propext or_comm
+  mul := And
+  one := True
+  one_mul := true_and
+  mul_one := and_true
+  zero_mul := false_and
+  mul_zero := and_false
+  nsmul := nsmulRec
+  mul_assoc _ _ _ := propext and_assoc
+  left_distrib _ _ _ := propext and_or_left
+  right_distrib _ _ _ := propext or_and_right
+
+instance : IsOrderedRing Prop where
+  add_le_add_left _ _ hab _
+    | .inl ha => .inl (hab ha)
+    | .inr hc => .inr hc
+  add_le_add_right _ _ hab _
+    | .inl hc => .inl hc
+    | .inr ha => .inr (hab ha)
+  zero_le_one _ := ⟨⟩
+  mul_le_mul_of_nonneg_left _ _ _ _ hbc
+    | ⟨ha, hb⟩ => ⟨ha, hbc hb⟩
+  mul_le_mul_of_nonneg_right _ _ _ _ hab
+    | ⟨ha, hc⟩ => ⟨hab ha, hc⟩
+
+instance : ClosedSemiring Prop where
+  kstar _ := True
+  kstar_eq_one_add_mul_kstar _ :=
+    propext ⟨fun ⟨⟩ => .inl ⟨⟩, fun _ => ⟨⟩⟩
+  kstar_eq_one_add_kstar_mul _ :=
+    propext ⟨fun ⟨⟩ => .inl ⟨⟩, fun _ => ⟨⟩⟩
+  kstar_induction_left _ _ _ h
+    | ⟨⟨⟩, hb⟩ => h (.inl hb)
+  kstar_induction_right _ _ _ h
+    | ⟨hb, ⟨⟩⟩ => h (.inl hb)
+
 instance : IsOrderedRing Bool where
   add_le_add_left a b hab c := by
     change a || c → b || c
-    intro g
-    rw [Bool.or_eq_true] at g ⊢
-    cases g with
-    | inl ha => exact .inl (hab ha)
-    | inr hc => exact .inr hc
+    rw [Bool.or_eq_true, Bool.or_eq_true]
+    intro
+    | .inl ha => exact .inl (hab ha)
+    | .inr hc => exact .inr hc
   zero_le_one := Bool.false_lt_true.le
   mul_le_mul_of_nonneg_left a ha b c hbc hab := by
     change a && c
