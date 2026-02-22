@@ -453,8 +453,8 @@ def initial : Algebra N where
   a := μN
   str := in'
 
-def initial.isInitial : Limits.IsInitial initial :=
-  Limits.IsInitial.ofUniqueHom
+def initial.isInitial : IsInitial initial :=
+  IsInitial.ofUniqueHom
     (fun ⟨A, f⟩ => ⟨Nat.foldO f, Nat.foldO_str.symm⟩) <| by
     -- Suppose that we have another map h
     intro ⟨A, f⟩ ⟨h, hh⟩
@@ -470,13 +470,13 @@ def initial.isInitial : Limits.IsInitial initial :=
     -- we also know that
     have h₁ :=
       calc f ∘ N.map h ∘ out
-        = h ∘ in' ∘ out := congrArg (· ∘ out) hh
-      _ = h := by rw [this]; rfl
+        _ = h ∘ in' ∘ out := congrArg (· ∘ out) hh
+        _ = h := by rw [this]; rfl
     -- Similarly
     have h₂ :=
       calc f ∘ N.map (Nat.foldO f) ∘ out
-        = Nat.foldO f ∘ in' ∘ out := congrArg (· ∘ out) Nat.foldO_str.symm
-      _ = Nat.foldO f := by rw [this]; rfl
+        _ = Nat.foldO f ∘ in' ∘ out := congrArg (· ∘ out) Nat.foldO_str.symm
+        _ = Nat.foldO f := by rw [this]; rfl
     -- Now we show that for all x : μN, we have that h x = Nat.foldO f x
     ext (x : μN)
     show h x = Nat.foldO f x
@@ -485,7 +485,7 @@ def initial.isInitial : Limits.IsInitial initial :=
     induction x with
     | zero =>
       calc h .zero
-          = (f ∘ N.map h ∘ out) .zero := by rw [h₁]
+        _ = (f ∘ N.map h ∘ out) .zero := by rw [h₁]
         _ = (f ∘ N.map h) (out .zero) := rfl
         _ = (f ∘ N.map h) (.inl ()) := rfl
         _ = f (N.map h (.inl ())) := rfl
@@ -497,7 +497,7 @@ def initial.isInitial : Limits.IsInitial initial :=
         _ = Nat.foldO f .zero := rfl
     | succ k ih =>
       calc h (.succ k)
-          = (f ∘ N.map h ∘ out) (.succ k) := by rw [h₁]
+        _ = (f ∘ N.map h ∘ out) (.succ k) := by rw [h₁]
         _ = (f ∘ N.map h) (out (.succ k)) := rfl
         _ = (f ∘ N.map h) (.inr k) := rfl
         _ = f (N.map h (.inr k)) := rfl
@@ -1685,13 +1685,13 @@ theorem semifix_fix
     induction i with
     | zero =>
       calc x 1
-          = x 0 ⊔ dx 0 := rfl
+        _ = x 0 ⊔ dx 0 := rfl
         _ = ⊥ ⊔ f ⊥ := rfl
         _ = f ⊥ := bot_sup_eq (f ⊥)
         _ = f (x 0) := rfl
     | succ j ih =>
       calc x (j + 2)
-          = x (j + 1) ⊔ dx (j + 1) := rfl
+        _ = x (j + 1) ⊔ dx (j + 1) := rfl
         _ = f (x j) ⊔ dx (j + 1) := by rw [ih]
         _ = f (x j) ⊔ f' (x j, dx j) := rfl
         _ = f (x j ⊔ dx j) := der (x j) (dx j) ⟨⟩ |>.2.symm
@@ -1774,7 +1774,7 @@ instance : LargeCategory Change where
         have ⟨hz, hg⟩ := hg (f x) (f' (x, dx)) hy
         refine ⟨hz, ?_⟩
         calc g (f (x ⨁[𝕏] dx))
-            = g (f x ⨁[𝕐] f' (x, dx)) := congrArg g hf
+          _ = g (f x ⨁[𝕐] f' (x, dx)) := congrArg g hf
           _ = g (f x) ⨁[𝕫] g' (f x, f' (x, dx)) := hg
   }
 
@@ -2312,12 +2312,12 @@ instance : ClosedSemiring I where
     max_top_left _ |>.symm
   kstar_induction_left a b x h := by
     calc 1 * b
-        = b := one_mul b
+      _ = b := one_mul b
       _ ≤ max b (a * x) := le_max_left b (a * x)
       _ ≤ x := h
   kstar_induction_right a b x h := by
     calc b * 1
-        = b := mul_one b
+      _ = b := mul_one b
       _ ≤ max b (x * a) := le_max_left b (x * a)
       _ ≤ x := h
 
@@ -2351,17 +2351,17 @@ open Endofunctor (Algebra)
 
 noncomputable section Adámek
 
-variable {𝓒 : Type u} [Category.{u} 𝓒] [HasInitial 𝓒]
+variable {𝓒 : Type u} [Category.{u} 𝓒] [HasInitial 𝓒] (F : 𝓒 ⥤ 𝓒)
 
-def chain.obj (F : 𝓒 ⥤ 𝓒) : ℕ → 𝓒
+def chain.obj : ℕ → 𝓒
   | 0 => ⊥_ 𝓒
-  | i + 1 => F.obj (obj F i)
+  | i + 1 => F.obj (obj i)
 
-def chain.step (F : 𝓒 ⥤ 𝓒) : ∀ n, (obj F n ⟶ obj F (n + 1))
-  | 0 => initial.to _
-  | i + 1 => F.map (step F i)
+def chain.step : ∀ n, (obj F n ⟶ obj F (n + 1))
+  | 0 => initial.to (F.obj (⊥_ 𝓒))
+  | i + 1 => F.map (step i)
 
-def chain (F : 𝓒 ⥤ 𝓒) : ℕ ⥤ 𝓒 := Functor.ofSequence (chain.step F)
+def chain : ℕ ⥤ 𝓒 := Functor.ofSequence (chain.step F)
 
 variable {F : 𝓒 ⥤ 𝓒}
 
@@ -2374,7 +2374,7 @@ lemma chain.map_succ {i j : ℕ} (h : i ≤ j) :
   | base => simp [map_id]
   | succ j hij ih =>
     calc map (fun n => F.map (g n)) i (j + 1) _
-        = map (fun n => F.map (g n)) i j hij ≫ map (fun n => F.map (g n)) j (j + 1) _ :=
+      _ = map (fun n => F.map (g n)) i j hij ≫ map (fun n => F.map (g n)) j (j + 1) _ :=
           map_comp _ i j _ hij _
       _ = map (fun n => F.map (g n)) i j hij ≫ F.map (g j) := by rw [map_le_succ]
       _ = F.map (map g i j hij) ≫ F.map (g j) := by rw [ih]
@@ -2408,7 +2408,7 @@ def μ_iso : True := by
   case naturality =>
     intro i j f
     calc F.map (D.map f) ≫ ι (j + 1)
-        = F.map (D.map ⟨⟨f.le⟩⟩) ≫ ι (j + 1) := rfl
+      _ = F.map (D.map ⟨⟨f.le⟩⟩) ≫ ι (j + 1) := rfl
       _ = D.map ⟨⟨Nat.succ_le_succ f.le⟩⟩ ≫ ι (j + 1) := by rw [chain.map_succ]
       _ = D.map ⟨⟨Nat.succ_le_succ f.le⟩⟩ ≫ ccμF.ι.app (j + 1) := rfl
       _ = ccμF.ι.app (i + 1) := ccμF.w _
@@ -2428,7 +2428,7 @@ def μ_iso : True := by
     · exact absurd f.le (Nat.not_succ_le_zero _)
     · let h := Nat.le_of_succ_le_succ f.le
       calc D.map f ≫ F.map (ι j)
-          = D.map ⟨⟨f.le⟩⟩ ≫ F.map (ι j) := rfl
+        _ = D.map ⟨⟨f.le⟩⟩ ≫ F.map (ι j) := rfl
         _ = F.map (D.map ⟨⟨h⟩⟩) ≫ F.map (ι j) := by rw [chain.map_succ]
         _ = F.map (D.map ⟨⟨h⟩⟩ ≫ ι j) := F.map_comp _ _ |>.symm
         _ = F.map (D.map ⟨⟨h⟩⟩ ≫ ccμF.ι.app j) := rfl
@@ -2444,12 +2444,12 @@ def μ_iso : True := by
   -- Putting the two together, we get the equations
   have h₁ {k} : ι (k + 1) ≫ out ≫ in' = ι (k + 1) :=
     calc ι (k + 1) ≫ out ≫ in'
-        = (ι (k + 1) ≫ out) ≫ in' := Category.assoc _ _ _ |>.symm
+      _ = (ι (k + 1) ≫ out) ≫ in' := Category.assoc _ _ _ |>.symm
       _ = F.map (ι k) ≫ in' := congrArg (· ≫ in') hout'
       _ = ι (k + 1) := hin k
   have h₂ {n} : F.map (ι n) ≫ in' ≫ out = F.map (ι n) :=
     calc F.map (ι n) ≫ in' ≫ out
-        = (F.map (ι n) ≫ in') ≫ out := Category.assoc _ _ _ |>.symm
+      _ = (F.map (ι n) ≫ in') ≫ out := Category.assoc _ _ _ |>.symm
       _ = (ι (n + 1)) ≫ out := congrArg (· ≫ out) (hin n)
       _ = F.map (ι n) := hout (n + 1)
   -- The universal property of ω-colimits lets us conclude that
@@ -2457,7 +2457,7 @@ def μ_iso : True := by
     apply hccFμF.hom_ext
     intro i
     calc F.map (ι i) ≫ in' ≫ out
-        = F.map (ι i) := h₂
+      _ = F.map (ι i) := h₂
       _ = F.map (ι i) ≫ 𝟙 (F.obj (μ F)) := (Category.comp_id _).symm
   -- The universal property of ω-colimits plus initiality of `⊥_ 𝓒` lets us conclude that
   have h₄ : out ≫ in' = 𝟙 (μ F) := by
@@ -2465,13 +2465,13 @@ def μ_iso : True := by
     intro
     | 0 =>
       calc ι 0 ≫ out ≫ in'
-          = (ι 0 ≫ out) ≫ in' := (Category.assoc _ _ _).symm
+        _ = (ι 0 ≫ out) ≫ in' := (Category.assoc _ _ _).symm
         _ = c 0 ≫ in' := congrArg (· ≫ in') (hout 0)
         _ = ι 0 := initial.hom_ext _ _
         _ = ι 0 ≫ 𝟙 (μ F) := (Category.comp_id _).symm
     | k + 1 =>
       calc ι (k + 1) ≫ out ≫ in'
-          = ι (k + 1) := h₁
+        _ = ι (k + 1) := h₁
         _ = ι (k + 1) ≫ 𝟙 (μ F) := (Category.comp_id _).symm
   -- Hence they form an isomorphism.
   have : μ F ≅ F.obj (μ F) := ⟨out, in', h₄, h₃⟩
@@ -2497,11 +2497,11 @@ def μ_iso : True := by
           induction y, hxy using Nat.le_induction with
           | base =>
             calc D.map (𝟙 x) ≫ f x
-                = 𝟙 (D.obj x) ≫ f x := by rw [D.map_id]
+              _ = 𝟙 (D.obj x) ≫ f x := by rw [D.map_id]
               _ = f x := Category.id_comp (f x)
           | succ k hxk ih =>
             calc D.map ⟨⟨hxk.step⟩⟩ ≫ f (k + 1)
-                = D.map (⟨⟨hxk⟩⟩ ≫ ⟨⟨k.le_succ⟩⟩) ≫ f (k + 1) := rfl
+              _ = D.map (⟨⟨hxk⟩⟩ ≫ ⟨⟨k.le_succ⟩⟩) ≫ f (k + 1) := rfl
               _ = D.map ⟨⟨hxk⟩⟩ ≫ D.map ⟨⟨k.le_succ⟩⟩ ≫ f (k + 1) := by
                 rw [D.map_comp, Category.assoc]
               _ = D.map ⟨⟨hxk⟩⟩ ≫ chain.step F k ≫ f (k + 1) := by
@@ -2517,7 +2517,7 @@ def μ_iso : True := by
         | zero => exact initial.to_comp _ |>.symm
         | succ n ih =>
           calc f (n + 1)
-              = F.map (f n) ≫ α := rfl
+            _ = F.map (f n) ≫ α := rfl
             _ = F.map (chain.step F n ≫ F.map (f n) ≫ α) ≫ α := by rw [← ih]
             _ = F.map (chain.step F n ≫ f (n + 1)) ≫ α := rfl
             _ = (F.map (chain.step F n) ≫ F.map (f (n + 1))) ≫ α := by rw [F.map_comp]
@@ -2543,7 +2543,7 @@ def μ_iso : True := by
       -- Therefore, the mediating morphism of the cocone
       let naturality i j g : FD.map g ≫ F.map (f j) ≫ α = (F.map (f i) ≫ α) ≫ 𝟙 A :=
         calc F.map (D.map g) ≫ (F.map (f j) ≫ α)
-            = (F.map (D.map g) ≫ F.map (f j)) ≫ α := by rw [Category.assoc]
+          _ = (F.map (D.map g) ≫ F.map (f j)) ≫ α := by rw [Category.assoc]
           _ = F.map (D.map g ≫ f j) ≫ α := by rw [F.map_comp]
           _ = F.map (f i) ≫ α := by rw [ccA.w]
           _ = (F.map (f i) ≫ α) ≫ 𝟙 A := Category.comp_id _ |>.symm
@@ -2565,7 +2565,7 @@ def μ_iso : True := by
         apply hccFμF.hom_ext
         intro i
         calc F.map (ι i) ≫ hccFμF.desc ccA''
-            = ccA''.ι.app i := hccFμF.fac ccA'' i
+          _ = ccA''.ι.app i := hccFμF.fac ccA'' i
           _ = f (i + 1) := rfl
           _ = ι (i + 1) ≫ αFold := (hαFold (i + 1)).symm
           _ = (F.map (ι i) ≫ in') ≫ αFold := by rw [← hin i]
@@ -2587,14 +2587,14 @@ def μ_iso : True := by
         | zero =>
           -- Observe that
           calc h_ 0
-              = ι 0 ≫ h := rfl
+            _ = ι 0 ≫ h := rfl
             _ = initial.to (μ F) ≫ h := congrArg (· ≫ h) (initial.hom_ext _ _)
             _ = initial.to A := initial.to_comp h
             _ = f 0 := rfl
         | succ k ih =>
           show h_ (k + 1) = f (k + 1)
           calc h_ (k + 1)
-              = ι (k + 1) ≫ h := rfl
+            _ = ι (k + 1) ≫ h := rfl
             _ = ι (k + 1) ≫ out ≫ F.map h ≫ α := by rw [← h₅]
             _ = F.map (ι k) ≫ F.map h ≫ α := by rw [← Category.assoc, hout']
             _ = F.map (ι k ≫ h) ≫ α := by rw [← Category.assoc, F.map_comp]

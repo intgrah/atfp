@@ -5,6 +5,7 @@ import Mathlib.CategoryTheory.Endofunctor.Algebra
 import Mathlib.CategoryTheory.Limits.Shapes.Terminal
 import Mathlib.CategoryTheory.Limits.Shapes.BinaryProducts
 import Mathlib.Order.Category.PartOrd
+import Mathlib.Tactic.Recall
 
 open CategoryTheory Limits
 
@@ -314,7 +315,7 @@ theorem mediate_unique (h : A → Π i, X i) (hh : ∀ i, π i ∘ h = f i) : h 
   have hh : π i ∘ h = f i := hh i
   -- So
   calc h a i
-      = π i (h a) := rfl -- By definition
+    _ = π i (h a) := rfl -- By definition
     _ = f i a := congrFun hh a
     _ = f↠ a i := rfl -- By definition
 
