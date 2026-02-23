@@ -7,6 +7,8 @@ import Mathlib.CategoryTheory.Limits.Shapes.BinaryProducts
 import Mathlib.Order.Category.PartOrd
 import Mathlib.Tactic.Recall
 
+set_option linter.hashCommand false
+
 open CategoryTheory Limits
 
 section Exercise1
