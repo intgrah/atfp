@@ -27,8 +27,10 @@ import Mathlib.Computability.ContextFreeGrammar
 import Mathlib.Computability.Language
 import Mathlib.Data.ENat.Basic
 import Mathlib.Topology.UnitInterval
-import Mathlib.Data.Set.Semiring
+import Mathlib.Data.Finite.Prod
+import Mathlib.Data.Finite.Sum
 import Mathlib.Data.Matrix.Basic
+import Mathlib.Data.Set.Semiring
 import Mathlib.Data.Sum.Order
 import Mathlib.GroupTheory.Coprod.Basic
 import Mathlib.Order.Category.CompleteLat
@@ -833,7 +835,7 @@ variable (α : Type u)
 
 /-! Theorem 4.1.3 -/
 
-theorem semilattice_wfasc_lfp {L : Type u} [SemilatticeSup L] [OrderBot L]
+theorem semilattice_wf_asc_lfp {L : Type u} [SemilatticeSup L] [OrderBot L]
     (hasc : WF_asc L)
     (f : L →o L) :
     ∃ μf : L, Function.IsFixedPt f μf ∧ ∀ x, Function.IsFixedPt f x → μf ≤ x := by
@@ -1354,73 +1356,117 @@ lemma FinTy.toTy_denotation {T : FinTy} : 〚T〛 = 〚T.toTy〛 := by
     rw [ihT]
     rfl
 
-def LatTy.denotation : LatTy.{u} → CompleteLat.{u}
-  | .unit => CompleteLat.of PUnit
-  | .prod L₁ L₂ => CompleteLat.of (L₁.denotation × L₂.denotation)
-  | .powerset T => CompleteLat.of (Set 〚T〛)
-
 instance : HasForget₂ CompleteLat PartOrd where
   forget₂.obj L := PartOrd.of L
   forget₂.map f := PartOrd.ofHom ⟨f, f.toBoundedLatticeHom.toBoundedOrderHom.toOrderHom.monotone⟩
 
-lemma LatTy.toTy_denotation {L : LatTy} :
-    (forget₂ CompleteLat PartOrd).obj L.denotation = 〚L〛 := by
-  induction L with
-  | unit => rfl
-  | prod L₁ L₂ ihL₁ ihL₂ =>
-    dsimp [LatTy.denotation, LatTy.toTy, Ty.denotation]
-    rw [← ihL₁, ← ihL₂]
-    rfl
-  | powerset => rfl
+def LatTy.bot' : ∀ L : LatTy, 〚L〛
+  | .unit => ()
+  | .prod L₁ L₂ => (bot' L₁, bot' L₂)
+  | .powerset T => (∅ : Set 〚T〛)
 
-instance LatTy.instCompleteLattice (L : LatTy) : CompleteLattice 〚L〛 := by
-  rw [← toTy_denotation]
-  dsimp only [forget₂, HasForget₂.forget₂]
-  infer_instance
+def LatTy.sup' : ∀ L : LatTy, 〚L〛 → 〚L〛 → 〚L〛
+  | .unit, _, _ => ()
+  | .prod L₁ L₂, (x₁, x₂), (y₁, y₂) => (sup' L₁ x₁ y₁, sup' L₂ x₂ y₂)
+  | .powerset T, s₁, s₂ => show Set 〚T〛 from s₁ ∪ s₂
+
+lemma LatTy.bot'_le (L : LatTy) (x : 〚L〛) : L.bot' ≤ x := by
+  induction L with
+  | unit => trivial
+  | prod L₁ L₂ ih₁ ih₂ => exact ⟨ih₁ x.1, ih₂ x.2⟩
+  | powerset T => exact Set.empty_subset (s := x)
+
+lemma LatTy.le_sup'_left (L : LatTy) (x y : 〚L〛) : x ≤ L.sup' x y := by
+  induction L with
+  | unit => trivial
+  | prod L₁ L₂ ih₁ ih₂ => exact ⟨ih₁ x.1 y.1, ih₂ x.2 y.2⟩
+  | powerset T => exact Set.subset_union_left (s := x) (t := y)
+
+lemma LatTy.le_sup'_right (L : LatTy) (x y : 〚L〛) : y ≤ L.sup' x y := by
+  induction L with
+  | unit => trivial
+  | prod L₁ L₂ ih₁ ih₂ => exact ⟨ih₁ x.1 y.1, ih₂ x.2 y.2⟩
+  | powerset T => exact Set.subset_union_right (s := x) (t := y)
+
+lemma LatTy.sup'_le (L : LatTy) {x y z : 〚L〛} (hx : x ≤ z) (hy : y ≤ z) : L.sup' x y ≤ z := by
+  induction L with
+  | unit => trivial
+  | prod L₁ L₂ ih₁ ih₂ => exact ⟨ih₁ hx.1 hy.1, ih₂ hx.2 hy.2⟩
+  | powerset T => exact Set.union_subset hx hy
+
+instance LatTy.instSemilatticeSup' (L : LatTy) : SemilatticeSup 〚L〛 where
+  sup := L.sup'
+  le_sup_left := L.le_sup'_left
+  le_sup_right := L.le_sup'_right
+  sup_le _ _ _ := L.sup'_le
+
+instance LatTy.instOrderBot' (L : LatTy) : OrderBot 〚L〛 where
+  bot := L.bot'
+  bot_le := L.bot'_le
 
 def LatTy.bot (L : LatTy) : PartOrd.terminal ⟶ 〚L〛 :=
-  ofHom ⟨fun ⟨⟩ => ⊥, fun ⟨⟩ ⟨⟩ ⟨⟩ => le_rfl⟩
+  ofHom ⟨fun ⟨⟩ => L.bot', fun ⟨⟩ ⟨⟩ ⟨⟩ => le_rfl⟩
 
 def LatTy.sup : ∀ L : LatTy, 〚L〛 ⊗ 〚L〛 ⟶ 〚L〛
   | .unit => terminal.from _
   | .prod L₁ L₂ => tensor_exchange.hom ≫ (sup L₁ ⊗ₘ sup L₂)
   | .powerset T => U.sup (PartOrd.powerset.obj 〚T〛)
 
-def LatTy.comprehension {A : PartOrd} {X : FinTy} (L : LatTy) (f : A ⊗ [〚X〛]ᵈ ⟶ 〚L〛) :
-    A ⊗ 〚𝒫 X〛 ⟶ 〚L〛 :=
-  PartOrd.ofHom {
-    toFun := fun (a, (s : Set 〚X〛)) => ⨆ x ∈ s, f (a, x)
-    monotone' := by
-      intro (a₁, s₁) (a₂, s₂) ⟨ha, hs⟩
-      simp_all [Ty.denotation]
-      change Set 〚X〛 at s₁ s₂
-      have := iSup_le_iSup_of_subset (f := fun x : [〚X〛]ᵈ => f (a₁, x)) hs
-      dsimp only at this
-      simp only [iSup_le_iff] at this
-      have := iSup₂_le (f := fun (x : 〚X〛) (_ : x ∈ s₁) => f (a₁, x))
-        (a := ⨆ x ∈ s₂, f (a₂, x))
-      have : ∀ x ∈ s₁, f (a₁, x) ≤ ⨆ x ∈ s₂, f (a₂, x) := by
-        intro x hx
-        have := f.hom.monotone
-        unfold Monotone Hom.hom at this
-        have hx₂ : x ∈ s₂ := hs hx
-        have h := @this (a₁, x) (a₂, x) ⟨ha, le_rfl⟩
-        trans
-        · exact h
-        · have := le_iSup₂ (f := fun (x : 〚X〛) (_ : x ∈ s₂) => f (a₂, x)) x hx₂
-          convert this
-          have ca : 〚L〛 = (forget₂ CompleteLat PartOrd).obj L.denotation :=
-            (LatTy.toTy_denotation (L := L)).symm
-          change 〚L〛.str = L.instCompleteLattice.toCompleteSemilatticeInf.toPartialOrder
-          sorry
-      sorry
-  }
+instance LatTy.instCompleteLattice : ∀ L : LatTy.{u}, CompleteLattice 〚L〛
+  | unit => inferInstanceAs (CompleteLattice PUnit)
+  | prod L₁ L₂ =>
+    let := L₁.instCompleteLattice
+    let := L₂.instCompleteLattice
+    inferInstanceAs (CompleteLattice (〚L₁〛 × 〚L₂〛))
+  | powerset T => inferInstanceAs (CompleteLattice (Set 〚T〛))
 
-def LatTy.fix {A : PartOrd} {L : LatTy} (f : [A]ᵈ ⊗ 〚L〛 ⟶ 〚L〛) :
+def LatTy.comprehension {A : PartOrd} {X : FinTy} :
+    ∀ L : LatTy, (A ⊗ [〚X〛]ᵈ ⟶ 〚L〛) → (A ⊗ 〚𝒫 X〛 ⟶ 〚L〛)
+  | .unit, _ => PartOrd.terminal.from _
+  | .prod L₁ L₂, f =>
+    let f₁ : A ⊗ [〚X〛]ᵈ ⟶ 〚L₁〛 := f ≫ fst
+    let f₂ : A ⊗ [〚X〛]ᵈ ⟶ 〚L₂〛 := f ≫ snd
+    prod_lift (L₁.comprehension f₁) (L₂.comprehension f₂)
+  | .powerset T, f =>
+    PartOrd.ofHom {
+      toFun | (a, (s : Set 〚X〛)) => ⋃ x ∈ s, f (a, x)
+      monotone' := by
+        intro (a₁, (s₁ : Set 〚X〛)) (a₂, (s₂ : Set 〚X〛)) ⟨ha, hs⟩
+        apply Set.iUnion₂_subset
+        intro x hx₁
+        have hx₂ : x ∈ s₂ := hs hx₁
+        calc f (a₁, x)
+          _ ≤ f (a₂, x) := f.hom.monotone ⟨ha, le_rfl⟩
+          _ ≤ ⋃ x ∈ s₂, f (a₂, x) := Set.subset_biUnion_of_mem (u := fun x => f (a₂, x)) hx₂
+    }
+
+instance FinTy.instFinite : ∀ T : FinTy, Finite 〚T〛
+  | unit => Finite.of_fintype PUnit
+  | prod T₁ T₂ => @Finite.instProd 〚T₁〛 〚T₂〛 T₁.instFinite T₂.instFinite
+  | coprod T₁ T₂ => @Finite.instSum 〚T₁〛 〚T₂〛 T₁.instFinite T₂.instFinite
+  | powerset T => @Set.instFinite 〚T〛 T.instFinite
+  | discrete T => T.instFinite
+
+instance LatTy.instFinite : ∀ L : LatTy, Finite 〚L〛
+  | unit => Finite.of_fintype PUnit
+  | prod L₁ L₂ => @Finite.instProd 〚L₁〛 〚L₂〛 L₁.instFinite L₂.instFinite
+  | powerset T => @Set.instFinite 〚T〛 T.instFinite
+
+lemma LatTy.wf_asc (L : LatTy) : WF_asc 〚L〛 := by
+  intro ⟨chain, hchain⟩
+  have : StrictMono chain := strictMono_nat_of_lt_succ hchain
+  exact not_strictMono_of_wellFoundedGT chain this
+
+noncomputable def LatTy.fix {A : PartOrd} {L : LatTy}
+(f : [A]ᵈ ⊗ 〚L〛 ⟶ 〚L〛) :
     [A]ᵈ ⟶ 〚L〛 :=
   @PartOrd.ofHom [A]ᵈ 〚L〛 _ _ {
-    toFun a := sorry
-    monotone' _ _ ha := sorry
+    toFun a :=
+      let f_a : 〚L〛 →o 〚L〛 :=
+        ⟨fun x => f (a, x), fun _ _ hxy => f.hom.monotone ⟨rfl, hxy⟩⟩
+      have := semilattice_wf_asc_lfp L.wf_asc f_a
+      this.choose
+    monotone' _ _ | rfl => le_rfl
   }
 
 set_option hygiene false in
@@ -1459,7 +1505,7 @@ set_option hygiene false in
 notation "〚" h "〛" => HasType.denotation h
 
 open Ctx (drop δ) in
-def HasType.denotation {Γ e A} : (Γ ⊢ e : A) → (〚Γ〛 ⟶ 〚A〛)
+noncomputable def HasType.denotation {Γ e A} : (Γ ⊢ e : A) → (〚Γ〛 ⟶ 〚A〛)
   | var x A hx => Ctx.lookup Γ x hx
   | dvar x A hx => Ctx.lookup Γ x hx
   | unit_intro => terminal.from 〚Γ〛
@@ -1488,7 +1534,7 @@ def HasType.denotation {Γ e A} : (Γ ⊢ e : A) → (〚Γ〛 ⟶ 〚A〛)
     prod_lift (𝟙 〚Γ〛) f ≫ g
   | bot_intro L => PartOrd.terminal.from 〚Γ〛 ≫ LatTy.bot L
   | one_intro e T he =>
-    drop Γ ≫ δ [Γ]ᵈ ≫ [〚show [Γ]ᵈ ⊢ e : T.toTy from he〛]ᵈ ≫ (FinTy.toTy_denotation ▸ one)
+    drop Γ ≫ δ [Γ]ᵈ ≫ [〚show [Γ]ᵈ ⊢ e : T.toTy from he〛]ᵈ ≫ (T.toTy_denotation ▸ one)
   | sup_intro e₁ e₂ L he₁ he₂ =>
     let f := 〚show Γ ⊢ e₁ : L from he₁〛
     let g := 〚show Γ ⊢ e₂ : L from he₂〛
@@ -1496,7 +1542,7 @@ def HasType.denotation {Γ e A} : (Γ ⊢ e : A) → (〚Γ〛 ⟶ 〚A〛)
   | for_intro e₁ e₂ T L he₁ he₂ =>
     let f := 〚show Γ ⊢ e₁ : 𝒫 T from he₁〛
     let g := 〚show ((.D, T.toTy) :: Γ) ⊢ e₂ : L from he₂〛
-    prod_lift (𝟙 〚Γ〛) f ≫ LatTy.comprehension L (FinTy.toTy_denotation ▸ g)
+    prod_lift (𝟙 〚Γ〛) f ≫ LatTy.comprehension L (T.toTy_denotation ▸ g)
   | fix_intro e L he =>
     let f := 〚show ((.none, L) :: [Γ]ᵈ) ⊢ e : L from he〛
     drop Γ ≫ δ [Γ]ᵈ ≫ LatTy.fix ((disc.comonad.ε.app 〚[Γ]ᵈ〛 ⊗ₘ 𝟙 〚L〛) ≫ f)
