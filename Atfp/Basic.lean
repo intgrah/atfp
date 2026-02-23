@@ -2074,19 +2074,21 @@ def bot {L : SemilatSupCat} : terminal ⟶ U.obj L where
       fun ⟨⟩ ⟨⟩ ⟨⟩ => ⟨⟨⟩, (bot_sup_eq (α := L.X) ⊥).symm⟩⟩
 
 def sup {L : SemilatSupCat} : (U.obj L).prod (U.obj L) ⟶ U.obj L where
-  base := PartOrd.ofHom
-    ⟨fun (l₁, l₂) => l₁ ⊔ l₂, fun _ _ ⟨hl, hm⟩ =>
-      sup_le_iff.mpr ⟨le_sup_of_le_left hl, le_sup_of_le_right hm⟩⟩
-  hasDeriv :=
-    ⟨PartOrd.ofHom ⟨fun (_, (dl₁, dl₂)) => dl₁ ⊔ dl₂, fun _ _ ⟨_, ⟨hm₁, hm₂⟩⟩ =>
-      sup_le_iff.mpr ⟨le_sup_of_le_left hm₁, le_sup_of_le_right hm₂⟩⟩, by
-      intro (l₁, l₂) (dl₁, dl₂) hl
+  base := PartOrd.ofHom {
+    toFun | (l₁, l₂) => l₁ ⊔ l₂
+    monotone' _ _ := fun ⟨hl, hm⟩ =>
+      sup_le (le_sup_of_le_left hl) (le_sup_of_le_right hm)
+  }
+  hasDeriv := by
+    refine ⟨PartOrd.ofHom ⟨fun (_, (dl₁, dl₂)) => dl₁ ⊔ dl₂, ?_⟩, ?_⟩
+    · intro _ _ ⟨_, ⟨hm₁, hm₂⟩⟩
+      exact sup_le (le_sup_of_le_left hm₁) (le_sup_of_le_right hm₂)
+    · intro (l₁, l₂) (dl₁, dl₂) hl
       refine ⟨⟨⟩, ?_⟩
       simp only [U.obj, Change.prod]
       change PartOrd.of L at l₁ l₂ dl₁ dl₂
       change _ ⊔ _ = (l₁ ⊔ l₂) ⊔ (dl₁ ⊔ dl₂)
       sorry
-      ⟩
 
 end Section9
 
@@ -2290,7 +2292,18 @@ instance : ClosedSemiring Bool where
 
 /-! Example 5.1.12 -/
 
-instance : ClosedSemiring (Tropical ℕ∞) := sorry
+instance : ClosedSemiring (Tropical ℕ∞) where
+  kstar _ := Tropical.trop 0
+  kstar_eq_one_add_mul_kstar a := by
+    cases a using Tropical.tropRec with | h a =>
+    cases a <;> rfl
+  kstar_eq_one_add_kstar_mul a := by
+    cases a using Tropical.tropRec with | h a =>
+    cases a <;> rfl
+  kstar_induction_left a b x h := by
+    sorry
+  kstar_induction_right a b x h := by
+    sorry
 
 /-! Example 5.1.13 -/
 
