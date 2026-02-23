@@ -40,6 +40,13 @@ import Mathlib.Order.FixedPoints
 
 open CategoryTheory Limits MonoidalCategory
 
+open Lean PrettyPrinter Delaborator SubExpr in
+@[delab app.CategoryTheory.ConcreteCategory.hom]
+def delabConcreteHom : Delab := whenPPOption getPPNotation do
+  let e ← getExpr
+  guard <| e.getAppNumArgs ≥ 9
+  withNaryArg 8 delab
+
 section Chapter1
 
 end Chapter1
@@ -646,7 +653,7 @@ variable {A B X Y : Type u}
 
 /-! Definition 3.9.7 -/
 
-def PolynomialFunctor.ℛ (F : PolynomialFunctor) (R : Rel A B) : Rel (〚F〛.obj A) (〚F〛.obj B) :=
+def PolynomialFunctor.ℛ (R : Rel A B) (F : PolynomialFunctor) : Rel (〚F〛.obj A) (〚F〛.obj B) :=
   match F with
   | id => R
   | const A => @Eq A
@@ -719,13 +726,23 @@ def WF_asc (X : Type u) [Preorder X] : Prop :=
 
 /-! Theorem 3.10.2 -/
 
--- TODO
 theorem WF.induction
     (hwf : WF_asc X)
     (P : X → Prop)
-    (hP : ∀ x : X, (∀ y < x, P y) → P x) :
+    (hP : ∀ x : X, (∀ y > x, P y) → P x) :
     ∀ x : X, P x := by
-  sorry
+  intro x
+  by_contra hx
+  have build : ∀ x : {x : X // ¬P x}, ∃ y : {y : X // ¬P y}, x < y := by
+    intro ⟨x, hnP⟩
+    by_contra hall
+    refine hnP (hP x fun y hy => ?_)
+    by_contra hnPy
+    exact hall ⟨⟨y, hnPy⟩, hy⟩
+  choose next hnext using build
+  let chain : ℕ → {x : X // ¬P x} := Nat.rec ⟨x, hx⟩ (fun _ => next)
+  have hasc : ∀ n, (chain n).val < (chain (n + 1)).val := fun n => hnext (chain n)
+  exact hwf ⟨fun n => (chain n).val, hasc⟩
 
 variable {F : PolynomialFunctor}
 
@@ -1576,6 +1593,17 @@ structure Change where
 notation x " ⨁[" 𝕏 "]" dx => Change.update 𝕏 ⟨(x, dx), by aesop⟩
 notation "𝟬[" 𝕏 "]" => Change.zero 𝕏
 
+open Lean PrettyPrinter Delaborator SubExpr in
+@[delab app.Change.update]
+def delabChangeUpdate : Delab := whenPPOption getPPNotation do
+  let e ← getExpr
+  guard <| e.getAppNumArgs == 2
+  let 𝕏 ← withAppFn (withAppArg delab)
+  let v ← withAppArg delab
+  match v with
+  | `(⟨($x, $dx), $_⟩) => `($x ⨁[$𝕏] $dx)
+  | _ => failure
+
 /-! Example 4.6.2 -/
 
 example : Change where
@@ -1628,8 +1656,8 @@ def IsDerivative {𝕏 𝕐 : Change.{u}}
 
 section
 
-notation "𝒫ℕ'" => Change.ofCompleteLat (CompleteLat.of (Set ℕ))
-notation "𝒫ℕ" => PartOrd.of (Set ℕ)
+abbrev 𝒫ℕ' := Change.ofCompleteLat (CompleteLat.of (Set ℕ))
+abbrev 𝒫ℕ := PartOrd.of (Set ℕ)
 
 def f : 𝒫ℕ ⟶ 𝒫ℕ :=
   PartOrd.ofHom {
@@ -1648,10 +1676,10 @@ def f'₀ : [𝒫ℕ]ᵈ ⊗ 𝒫ℕ ⟶ 𝒫ℕ :=
   }
 
 example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₀ := by
-  intro x dx h
-  constructor
-  · sorry
-  · sorry
+  intro (x : Set ℕ) (dx : Set ℕ) h
+  refine ⟨⟨⟩, ?_⟩
+  change x ∪ dx ∪ {1, 2} = x ∪ {1, 2} ∪ dx
+  tauto_set
 
 def f'₁ : [𝒫ℕ]ᵈ ⊗ 𝒫ℕ ⟶ 𝒫ℕ :=
   PartOrd.ofHom {
@@ -1664,6 +1692,13 @@ def f'₁ : [𝒫ℕ]ᵈ ⊗ 𝒫ℕ ⟶ 𝒫ℕ :=
       · simp
   }
 
+example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₁ := by
+  intro (x : Set ℕ) (dx : Set ℕ) h
+  refine ⟨⟨⟩, ?_⟩
+  change x ∪ dx ∪ {1, 2} = x ∪ {1, 2} ∪ dx \ {1}
+  ext n; simp only [Set.mem_union, Set.mem_insert_iff, Set.mem_singleton_iff, Set.mem_diff]
+  tauto
+
 def f'₂ : [𝒫ℕ]ᵈ ⊗ 𝒫ℕ ⟶ 𝒫ℕ :=
   PartOrd.ofHom {
     toFun | (_, dx) => dx \ {2}
@@ -1675,6 +1710,13 @@ def f'₂ : [𝒫ℕ]ᵈ ⊗ 𝒫ℕ ⟶ 𝒫ℕ :=
       · simp
   }
 
+example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₂ := by
+  intro (x : Set ℕ) (dx : Set ℕ) h
+  refine ⟨⟨⟩, ?_⟩
+  change x ∪ dx ∪ {1, 2} = x ∪ {1, 2} ∪ dx \ {2}
+  ext n; simp only [Set.mem_union, Set.mem_insert_iff, Set.mem_singleton_iff, Set.mem_diff]
+  tauto
+
 def f'₃ : [𝒫ℕ]ᵈ ⊗ 𝒫ℕ ⟶ 𝒫ℕ :=
   PartOrd.ofHom {
     toFun | (_, dx) => dx \ {1, 2}
@@ -1685,6 +1727,13 @@ def f'₃ : [𝒫ℕ]ᵈ ⊗ 𝒫ℕ ⟶ 𝒫ℕ :=
       · exact hdy
       · simp
   }
+
+example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₃ := by
+  intro (x : Set ℕ) (dx : Set ℕ) h
+  refine ⟨⟨⟩, ?_⟩
+  change x ∪ dx ∪ {1, 2} = x ∪ {1, 2} ∪ dx \ {1, 2}
+  ext n; simp only [Set.mem_union, Set.mem_insert_iff, Set.mem_singleton_iff, Set.mem_diff]
+  tauto
 
 end
 
