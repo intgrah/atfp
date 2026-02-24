@@ -1967,7 +1967,10 @@ end Section6
 
 section Section7
 
-instance {𝕏 𝕐 : Change} : PartialOrder (𝕏 ⟶ 𝕐) := sorry
+instance {𝕏 𝕐 : Change} : PartialOrder (𝕏 ⟶ 𝕐) :=
+  PartialOrder.lift
+    (fun f => f.base.hom)
+    (fun _ _ h => Hom.ext (PartOrd.Hom.ext h))
 
 noncomputable def exp (𝕏 𝕐 : Change) : Change where
   X := PartOrd.of (𝕏 ⟶ 𝕐)
@@ -2083,12 +2086,9 @@ def sup {L : SemilatSupCat} : (U.obj L).prod (U.obj L) ⟶ U.obj L where
     refine ⟨PartOrd.ofHom ⟨fun (_, (dl₁, dl₂)) => dl₁ ⊔ dl₂, ?_⟩, ?_⟩
     · intro _ _ ⟨_, ⟨hm₁, hm₂⟩⟩
       exact sup_le (le_sup_of_le_left hm₁) (le_sup_of_le_right hm₂)
-    · intro (l₁, l₂) (dl₁, dl₂) hl
-      refine ⟨⟨⟩, ?_⟩
-      simp only [U.obj, Change.prod]
-      change PartOrd.of L at l₁ l₂ dl₁ dl₂
-      change _ ⊔ _ = (l₁ ⊔ l₂) ⊔ (dl₁ ⊔ dl₂)
-      sorry
+    · intro (l₁, l₂) (dl₁, dl₂) ⟨⟨⟩, ⟨⟩⟩
+      change L at l₁ l₂ dl₁ dl₂
+      exact ⟨⟨⟩, sup_sup_sup_comm l₁ dl₁ l₂ dl₂⟩
 
 end Section9
 
