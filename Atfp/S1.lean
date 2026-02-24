@@ -121,23 +121,23 @@ def RelCat.prodFan (X Y : RelCat.{u}) : BinaryFan X Y :=
 def RelCat.prodLift (f : W ⟶ X) (g : W ⟶ Y) : W ⟶ X ⊕ Y :=
   ⟨{(w, xy) | match xy with | .inl x => (w, x) ∈ f.rel | .inr y => (w, y) ∈ g.rel}⟩
 
-lemma RelCat.comp_fst_rel (m : W ⟶ X ⊕ Y) w x :
+lemma RelCat.comp_fst_rel {m : W ⟶ X ⊕ Y} {w x} :
     (w, x) ∈ (m ≫ (prodFan X Y).fst).rel ↔ (w, Sum.inl x) ∈ m.rel :=
   ⟨fun ⟨.inl _, hm, heq⟩ => heq ▸ hm, fun hm => ⟨.inl x, hm, rfl⟩⟩
 
-lemma RelCat.comp_snd_rel (m : W ⟶ X ⊕ Y) w y :
+lemma RelCat.comp_snd_rel {m : W ⟶ X ⊕ Y} {w y} :
     (w, y) ∈ (m ≫ (prodFan X Y).snd).rel ↔ (w, Sum.inr y) ∈ m.rel :=
   ⟨fun ⟨.inr _, hm, heq⟩ => heq ▸ hm, fun hm => ⟨.inr y, hm, rfl⟩⟩
 
 def RelCat.prodFan_isLimit : IsLimit (prodFan X Y) := by
   apply BinaryFan.isLimitMk fun s => prodLift s.fst s.snd
-  case fac_left => intro; ext; apply comp_fst_rel
-  case fac_right => intro; ext; apply comp_snd_rel
+  case fac_left => intro; ext; exact comp_fst_rel
+  case fac_right => intro; ext; exact comp_snd_rel
   case uniq =>
-    intro _ _ hfst hsnd
+    intro _ m hfst hsnd
     ext ⟨w, x | y⟩
-    · rw [← comp_fst_rel, ← hfst]; rfl
-    · rw [← comp_snd_rel, ← hsnd]; rfl
+    · exact comp_fst_rel.symm.trans (by rw [← hfst]; rfl)
+    · exact comp_snd_rel.symm.trans (by rw [← hsnd]; rfl)
 
 instance (X Y : RelCat) : HasLimit (pair X Y) :=
   ⟨RelCat.prodFan X Y, RelCat.prodFan_isLimit⟩
