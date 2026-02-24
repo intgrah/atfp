@@ -62,8 +62,8 @@ def PartOrd.isTerminal : IsTerminal PartOrd.terminal :=
 
 def PartOrd.isInitial : IsInitial PartOrd.initial :=
   IsInitial.ofUniqueHom
-    (fun _ => PartOrd.ofHom ⟨PEmpty.elim, fun x => x.elim⟩)
-    (fun _ _ => PartOrd.ext fun x => x.elim)
+    (fun _ => PartOrd.ofHom ⟨nofun, nofun⟩)
+    (fun _ _ => PartOrd.ext nofun)
 
 instance : HasTerminal PartOrd :=
   IsTerminal.hasTerminal PartOrd.isTerminal
@@ -85,21 +85,13 @@ def CommMonCat.zero : CommMonCat := CommMonCat.of PUnit
 
 def CommMonCat.isTerminal : IsTerminal CommMonCat.zero :=
   IsTerminal.ofUniqueHom
-    (fun _ => CommMonCat.ofHom {
-      toFun _ := 1
-      map_one' := rfl
-      map_mul' _ _ := rfl
-    })
-    (fun _ _ => CommMonCat.ext fun _ => rfl)
+    (fun _ => ofHom ⟨⟨fun _ => 1, rfl⟩, fun _ _ => rfl⟩)
+    (fun _ _ => ext fun _ => rfl)
 
 def CommMonCat.isInitial : IsInitial CommMonCat.zero :=
   IsInitial.ofUniqueHom
-    (fun _ => CommMonCat.ofHom {
-      toFun _ := 1
-      map_one' := rfl
-      map_mul' _ _ := (one_mul 1).symm
-    })
-    (fun _ m => CommMonCat.ext fun ⟨⟩ => m.hom.map_one)
+    (fun _ => ofHom ⟨⟨fun ⟨⟩ => 1, rfl⟩, fun ⟨⟩ ⟨⟩ => (one_mul 1).symm⟩)
+    (fun _ m => ext fun ⟨⟩ => m.hom.map_one)
 
 instance : HasTerminal CommMonCat :=
   IsTerminal.hasTerminal CommMonCat.isTerminal
@@ -116,9 +108,11 @@ What do products in Rel, the category of sets and relations, look like? (Hint. T
 and `B` is not the cartesian product of sets!)
 -/
 
-/-! The product is the disjoint union -/
+/-! The product is the disjoint union (as well as the coproduct) -/
 
 universe u
+
+variable {W X Y : RelCat.{u}}
 
 open SetRel Function
 
@@ -127,62 +121,31 @@ def RelCat.prodFan (X Y : RelCat.{u}) : BinaryFan X Y :=
     (.ofRel (graph Sum.inl).inv)
     (.ofRel (graph Sum.inr).inv)
 
-private def RelCat.prodLift {W X Y : RelCat.{u}} (f : W ⟶ X) (g : W ⟶ Y) :
-    W ⟶ (X ⊕ Y : Type u) :=
-  .ofRel {p | (∃ x, p.2 = .inl x ∧ (p.1, x) ∈ f.rel) ∨
-              (∃ y, p.2 = .inr y ∧ (p.1, y) ∈ g.rel)}
+def RelCat.prodLift (f : W ⟶ X) (g : W ⟶ Y) : W ⟶ X ⊕ Y :=
+  .ofRel {(w, xy) | match xy with | .inl x => (w, x) ∈ f.rel | .inr y => (w, y) ∈ g.rel}
 
-private lemma RelCat.prodLift_inl {W X Y : RelCat.{u}} (f : W ⟶ X) (g : W ⟶ Y) (w x) :
-    (w, Sum.inl x) ∈ (prodLift f g).rel ↔ (w, x) ∈ f.rel := by
-  apply Iff.intro
-  · rintro (⟨x', hx', h⟩ | ⟨y', hy', _⟩)
-    · exact Sum.inl.inj hx' ▸ h
-    · exact absurd hy' nofun
-  · exact fun h => .inl ⟨x, rfl, h⟩
-
-private lemma RelCat.prodLift_inr {W X Y : RelCat.{u}} (f : W ⟶ X) (g : W ⟶ Y) (w y) :
-    (w, Sum.inr y) ∈ (prodLift f g).rel ↔ (w, y) ∈ g.rel := by
-  apply Iff.intro
-  · rintro (⟨x', hx', _⟩ | ⟨y', hy', h⟩)
-    · exact absurd hx' nofun
-    · exact Sum.inr.inj hy' ▸ h
-  · exact fun h => .inr ⟨y, rfl, h⟩
-
-private lemma RelCat.comp_fst_rel {W X Y : RelCat.{u}} (m : W ⟶ (X ⊕ Y)) w x :
+lemma RelCat.comp_fst_rel (m : W ⟶ X ⊕ Y) w x :
     (w, x) ∈ (m ≫ (prodFan X Y).fst).rel ↔ (w, Sum.inl x) ∈ m.rel :=
-  ⟨fun ⟨_, hm, heq⟩ => heq ▸ hm, fun hm => ⟨_, hm, rfl⟩⟩
+  ⟨fun ⟨.inl _, hm, heq⟩ => heq ▸ hm, fun hm => ⟨.inl x, hm, rfl⟩⟩
 
-private lemma RelCat.comp_snd_rel {W X Y : RelCat.{u}} (m : W ⟶ (X ⊕ Y)) w y :
+lemma RelCat.comp_snd_rel (m : W ⟶ X ⊕ Y) w y :
     (w, y) ∈ (m ≫ (prodFan X Y).snd).rel ↔ (w, Sum.inr y) ∈ m.rel :=
-  ⟨fun ⟨_, hm, heq⟩ => heq ▸ hm, fun hm => ⟨_, hm, rfl⟩⟩
+  ⟨fun ⟨.inr _, hm, heq⟩ => heq ▸ hm, fun hm => ⟨.inr y, hm, rfl⟩⟩
 
-def RelCat.prodFan_isLimit (X Y : RelCat.{u}) : IsLimit (RelCat.prodFan X Y) := by
-  apply BinaryFan.isLimitMk
-  case lift =>
-    exact fun s => prodLift s.fst s.snd
-  case fac_left =>
-    intro s
-    apply RelCat.Hom.ext
-    ext ⟨w, x⟩
-    exact (comp_fst_rel _ w x).trans (prodLift_inl _ _ w x)
-  case fac_right =>
-    intro s
-    apply RelCat.Hom.ext
-    ext ⟨w, y⟩
-    exact (comp_snd_rel _ w y).trans (prodLift_inr _ _ w y)
+def RelCat.prodFan_isLimit : IsLimit (prodFan X Y) := by
+  apply BinaryFan.isLimitMk fun s => prodLift s.fst s.snd
+  case fac_left => intro; ext; apply comp_fst_rel
+  case fac_right => intro; ext; apply comp_snd_rel
   case uniq =>
-    intro s m hfst hsnd
-    ext ⟨w, z⟩
-    cases z with
-    | inl x =>
-      rw [prodLift_inl]
-      exact (comp_fst_rel m w x).symm.trans (Set.ext_iff.mp (congr_arg _ hfst) _)
-    | inr y =>
-      rw [prodLift_inr]
-      exact (comp_snd_rel m w y).symm.trans (Set.ext_iff.mp (congr_arg _ hsnd) _)
+    intro _ _ hfst hsnd
+    ext ⟨w, x | y⟩
+    · rw [← comp_fst_rel, ← hfst]
+      rfl
+    · rw [← comp_snd_rel, ← hsnd]
+      rfl
 
 instance (X Y : RelCat) : HasLimit (pair X Y) :=
-  HasLimit.mk ⟨RelCat.prodFan X Y, RelCat.prodFan_isLimit X Y⟩
+  HasLimit.mk ⟨RelCat.prodFan X Y, RelCat.prodFan_isLimit⟩
 
 instance : HasBinaryProducts RelCat :=
   hasBinaryProducts_of_hasLimit_pair RelCat
@@ -310,8 +273,10 @@ postfix:max "↠" => mediate
 
 /-- Uniqueness -/
 theorem mediate_unique (h : A → Π i, X i) (hh : ∀ i, π i ∘ h = f i) : h = f↠ := by
+  show h = f↠
+  -- Let a : A and i : ι
   funext (a : A) (i : ι)
-  -- We want to show:
+  -- We want to show
   show h a i = f↠ a i
   -- We have
   have hh : π i ∘ h = f i := hh i
@@ -329,7 +294,7 @@ section Exercise9
 The Levenshtein distance, or edit distance, between two strings be naively computed as follows:
 -/
 
-variable {α : Type} [DecidableEq α]
+variable {α : Type} [DecidableEq α] [Hashable α]
 
 /-- Levenshtein distance -/
 def lev : List α × List α → ℕ
@@ -345,6 +310,7 @@ def lev : List α × List α → ℕ
         + 1
 termination_by s => s.1.length + s.2.length
 
+/- It works -/
 #guard lev ([1, 5, 2, 3], [1, 2, 4, 3]) == 2
 #guard lev ([1, 2, 3], [1, 2, 3]) == 0
 
@@ -353,69 +319,76 @@ Formulate this algorithm as a coalgebra-to-algebra morphism, and then solve with
 programming.
 -/
 
-inductive Split (α R : Type)
-  | inl : List α → Split α R
-  | inr : List α → Split α R
-  | cons : R → Split α R
-  | diff : R → R → R → Split α R
+inductive Split.obj (α R : Type)
+  | inl (s₁ : List α)
+  | inr (s₂ : List α)
+  | cons (x : R)
+  | diff (x y z : R)
 
-def Split.map {R S} (f : R → S) : Split α R → Split α S
-  | Split.inl n₁ => Split.inl n₁
-  | Split.inr n₂ => Split.inr n₂
-  | Split.cons x => Split.cons (f x)
-  | Split.diff x y z => Split.diff (f x) (f y) (f z)
+def Split.map {R S} (f : R → S) : obj α R → obj α S
+  | .inl s₁ => .inl s₁
+  | .inr s₂ => .inr s₂
+  | .cons x => .cons (f x)
+  | .diff x y z => .diff (f x) (f y) (f z)
 
 /-- Split is indeed a lawful functor -/
-def Split.functor : Type ⥤ Type where
-  obj := Split α
+def Split (α : Type) : Type ⥤ Type where
+  obj := Split.obj α
   map := Split.map
-  map_id := by intro; ext x; cases x <;> rfl
-  map_comp := by intros; ext x; cases x <;> rfl
+  map_id _ := by ext (_ | _ | _ | _) <;> rfl
+  map_comp _ _ := by ext (_ | _ | _ | _) <;> rfl
 
-def Split.coalg : List α × List α → Split α (List α × List α)
-  | (s₁, []) => Split.inl s₁
-  | ([], s₂) => Split.inr s₂
-  | (s₁@(c₁ :: s₁'), s₂@(c₂ :: s₂')) =>
-    if c₁ = c₂ then
-      Split.cons (s₁', s₂')
-    else
-      Split.diff (s₁, s₂') (s₁', s₂) (s₁', s₂')
+open Endofunctor (Algebra Coalgebra)
 
-def Split.alg : Split α ℕ → ℕ
-  | Split.inl s₁ => s₁.length
-  | Split.inr s₂ => s₂.length
-  | Split.cons x => x
-  | Split.diff x y z => min (min x y) z + 1
+abbrev Split.coalg : Coalgebra (Split α) where
+  V := List α × List α -- carrier
+  str -- structure morphism from V ⟶ Split.obj α V
+    | (s₁, []) => .inl s₁
+    | ([], s₂) => .inr s₂
+    | (s₁@(c₁ :: s₁'), s₂@(c₂ :: s₂')) =>
+      if c₁ = c₂ then
+        .cons (s₁', s₂')
+      else
+        .diff (s₁, s₂') (s₁', s₂) (s₁', s₂')
 
-/-- Partial because well-foundedness is not checked -/
-partial def Split.hylo {β σ} [Inhabited β] (coalg : α → Split σ α) (alg : Split σ β → β) : α → β :=
-  alg ∘ map (hylo coalg alg) ∘ coalg
+abbrev Split.alg : Algebra (Split α) where
+  a := ℕ -- carrier
+  str -- structure morphism from Split.obj α a ⟶ a
+    | .inl s₁ => s₁.length
+    | .inr s₂ => s₂.length
+    | .cons x => x
+    | .diff x y z => min (min x y) z + 1
+
+/-- Partial because well-foundedness is not proven -/
+partial def Split.hylo {α}
+    (coalg : Coalgebra (Split α))
+    (alg : Algebra (Split α)) [Inhabited alg.a] :
+    coalg.V → alg.a :=
+  alg.str ∘ map (hylo coalg alg) ∘ coalg.str
 
 def lev₂ : List α × List α → ℕ := Split.hylo Split.coalg Split.alg
 
+/- It works -/
 #guard lev₂ ([1, 5, 2, 3], [1, 2, 4, 3]) == 2
 #guard lev₂ ([1, 2, 3], [1, 2, 3]) == 0
 
 /-- Version of `map` handling mutable state. -/
-def Split.mapM {m F G} [Applicative m] (f : F → m G) : Split α F → m (Split α G)
+def Split.mapM {m F G} [Applicative m] (f : F → m G) : obj α F → m (obj α G)
   | .inl s => pure (.inl s)
   | .inr s => pure (.inr s)
   | .cons x => .cons <$> f x
   | .diff x y z => .diff <$> f x <*> f y <*> f z
 
--- We require α to be hashable for memoisation
-variable [Hashable α]
-
 /-- Memoised version for dynamic programming -/
-unsafe def Split.memo {β σ}
-    (coalg : α → Split σ α)
-    (alg : Split σ β → β) :
-    α → β :=
-  let rec lev (x : α) : StateM (Std.HashMap α β) β := do
+unsafe def Split.memo
+    (coalg : Coalgebra (Split α)) [BEq coalg.V] [Hashable coalg.V]
+    (alg : Algebra (Split α)) :
+    coalg.V → alg.a :=
+  let rec lev (x : coalg.V) : StateM (Std.HashMap coalg.V alg.a) alg.a := do
     match (← get)[x]? with
     | some v => return v
     | none => do
-      let v := alg (← Split.mapM lev (coalg x))
+      let v := alg.str (← Split.mapM lev (coalg.str x))
       modify (·.insert x v)
       return v
   fun x => (lev x).run' ∅
@@ -423,8 +396,16 @@ unsafe def Split.memo {β σ}
 unsafe def lev₃ : List α × List α → ℕ :=
   Split.memo Split.coalg Split.alg
 
-#eval lev₃ ([1, 5, 2, 3], [1, 2, 4, 3]) == 2
-#eval lev₃ ([1, 2, 3], [1, 2, 3]) == 0
-#eval lev₃ (List.range 100, 1 :: List.range 100) == 1
+/-- info: 2 -/
+#guard_msgs in
+#eval lev₃ ([1, 5, 2, 3], [1, 2, 4, 3])
+/-- info: 0 -/
+#guard_msgs in
+#eval lev₃ ([1, 2, 3], [1, 2, 3])
+
+/- [0, ... 99] and [1, 0, ... 99] would be intractable if not for memoisation -/
+/-- info: 1 -/
+#guard_msgs in
+#eval lev₃ (List.range 100, 1 :: List.range 100)
 
 end Exercise9

@@ -618,7 +618,7 @@ def monotone {α β} (F : PolynomialFunctor) (f : α ↪ β) :
 def iterate_embedding (F : PolynomialFunctor) (n : ℕ) :
     〚F〛.obj^[n] PEmpty ↪ 〚F〛.obj^[n + 1] PEmpty := by
   induction n with
-  | zero => exact ⟨PEmpty.elim, fun x => PEmpty.elim x⟩
+  | zero => exact ⟨nofun, nofun⟩
   | succ n ih =>
     rw [Function.iterate_succ_apply', Function.iterate_succ_apply']
     exact F.monotone ih
@@ -981,11 +981,11 @@ instance : CartesianMonoidalCategory PartOrd :=
 def initial : PartOrd := of PEmpty
 
 def initial.to (X : PartOrd) : initial ⟶ X :=
-  ofHom ⟨PEmpty.elim, fun x => x.elim⟩
+  ofHom ⟨nofun, nofun⟩
 
 def isInitial : IsInitial initial :=
   IsInitial.ofUniqueHom initial.to
-    (fun _ _ => ext fun x => x.elim)
+    (fun _ _ => ext nofun)
 
 instance : HasInitial PartOrd :=
   IsInitial.hasInitial isInitial
@@ -1903,17 +1903,17 @@ def initial : Change where
   V := Set.univ
   update _ := _
   update_monotone _ := le_rfl
-  zero := PEmpty.elim
+  zero := nofun
   zero_valid := Set.mem_univ
   zero_update _ := rfl
 
 def initial.to (𝕏 : Change) : initial ⟶ 𝕏 where
   base := PartOrd.initial.to 𝕏.X
-  hasDeriv := ⟨PartOrd.ofHom ⟨fun (_, dx) => dx.elim, fun (_, dx₁) => dx₁.elim⟩, fun x => x.elim⟩
+  hasDeriv := ⟨PartOrd.ofHom ⟨nofun, nofun⟩, nofun⟩
 
 def isInitial : IsInitial initial :=
   IsInitial.ofUniqueHom initial.to
-    (fun _ _ => Hom.ext <| PartOrd.ext fun x => x.elim)
+    (fun _ _ => Hom.ext <| PartOrd.ext nofun)
 
 section Section5
 
@@ -2207,7 +2207,6 @@ class ClosedSemiring (α : Type u) extends Semiring α, PartialOrder α, KStar �
 
 /-! Example 5.1.11 -/
 
-
 instance : AddZero Prop where
   zero := False
   add := Or
@@ -2397,7 +2396,7 @@ end Section2
 
 section Section3
 
--- TODO
+variable {S M N : Type*} [ClosedSemiring S]
 
 end Section3
 
@@ -2456,22 +2455,14 @@ instance : Semiring I where
   left_distrib a b c := Subtype.ext (mul_max_of_nonneg b.1 c.1 (Set.mem_Icc.mp a.2).1)
   right_distrib a b c := Subtype.ext (max_mul_of_nonneg a.1 b.1 (Set.mem_Icc.mp c.2).1)
 
-instance : ClosedSemiring I where
-  kstar p := 1
-  kstar_eq_one_add_mul_kstar a :=
-    max_top_left _ |>.symm
-  kstar_eq_one_add_kstar_mul a :=
-    max_top_left _ |>.symm
-  kstar_induction_left a b x h := by
-    calc 1 * b
-      _ = b := one_mul b
-      _ ≤ max b (a * x) := le_max_left b (a * x)
-      _ ≤ x := h
-  kstar_induction_right a b x h := by
-    calc b * 1
-      _ = b := mul_one b
-      _ ≤ max b (x * a) := le_max_left b (x * a)
-      _ ≤ x := h
+instance : KleeneAlgebra I where
+  kstar _ := 1
+  bot_le _ := bot_le
+  one_le_kstar _ := le_rfl
+  mul_kstar_le_kstar _ := le_top
+  kstar_mul_le_kstar _ := le_top
+  mul_kstar_le_self _ x _ := show x * 1 ≤ x by rw [mul_one]
+  kstar_mul_le_self _ x _ := show 1 * x ≤ x by rw [one_mul]
 
 -- TODO Viterbi
 
