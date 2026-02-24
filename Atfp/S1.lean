@@ -2,12 +2,9 @@ import Mathlib.Algebra.Category.MonCat.Basic
 import Mathlib.Algebra.Group.Nat.Defs
 import Mathlib.CategoryTheory.Category.RelCat
 import Mathlib.CategoryTheory.Endofunctor.Algebra
-import Mathlib.CategoryTheory.Limits.Shapes.Terminal
 import Mathlib.CategoryTheory.Limits.Shapes.BinaryProducts
+import Mathlib.CategoryTheory.Limits.Shapes.Terminal
 import Mathlib.Order.Category.PartOrd
-import Mathlib.Tactic.Recall
-
-set_option linter.hashCommand false
 
 open CategoryTheory Limits
 
@@ -18,21 +15,15 @@ section Exercise1
 example : Monoid ℕ where
   one := 0
   mul := Nat.add
-  /- `∀ n, n + 0 = n` -/
   mul_one := Nat.add_zero
-  /- `∀ n, 0 + n = n`-/
   one_mul := Nat.zero_add
-  /- `∀ n m k, (n + m) + k = n + (m + k)` -/
   mul_assoc := Nat.add_assoc
 
 example : Monoid ℕ where
   one := 1
   mul := Nat.mul
-  /- `∀ n, n * 1 = n `-/
   mul_one := Nat.mul_one
-  /- `∀ n, 1 * n = n` -/
   one_mul := Nat.one_mul
-  /- `∀ n m k, (n * m) * k = n * (m + k)` -/
   mul_assoc := Nat.mul_assoc
 
 end Exercise1
@@ -40,8 +31,6 @@ end Exercise1
 section Exercise2
 
 /-! Add a property to the definition of monoid to make it into a commutative monoid. -/
-
-#check CommMonoid
 
 class CommMonoid' M extends Monoid M where
   mul_comm : ∀ x y : M, x * y = y * x
@@ -121,8 +110,8 @@ variable {W X Y : RelCat.{u}}
 open SetRel Function
 
 /--
-xy : X ⊕ Y is related to x : X if xy = .inl x, and
-xy : X ⊕ Y is related to x : Y if xy = .inr y
+xy : X ⊕ Y is related to x : X iff xy = .inl x,
+xy : X ⊕ Y is related to y : Y iff xy = .inr y
 -/
 def RelCat.prodFan (X Y : RelCat.{u}) : BinaryFan X Y :=
   BinaryFan.mk
@@ -212,7 +201,6 @@ inductive PolynomialFunctor where
   | coprod (F G : PolynomialFunctor)
 
 set_option hygiene false in
-/-- Turn off hygiene to allow notation to be used within its definition -/
 notation "〚" F "〛" => PolynomialFunctor.denotation F
 
 /--
@@ -244,9 +232,6 @@ def PolynomialFunctor.denotation : PolynomialFunctor → Type u ⥤ Type u
         ext (_ | _) <;> rfl
     }
 
-variable (F : PolynomialFunctor.{u})
-#check 〚F〛
-
 end Exercise7
 
 section Exercise8
@@ -254,7 +239,7 @@ section Exercise8
 /-!
 Recall that if an object `A` and a family of maps `f i : A → X i` form a cone over a projective
 diagram, the mediating map `f↠` can be explicitly given as `f↠(a) = i ↦ f i a`.
-Verify that if there is any other `h : A → lim X_i` such that `f_i = h ≫ π_i` for every `i`,
+Verify that if there is any other `h : A → limit X` such that `f i = h ≫ π i` for every `i`,
 then `h = f↠`.
 -/
 
@@ -262,10 +247,7 @@ universe u
 
 variable {ι : Type u} {X : ι → Type u} {A : Type u} (f : Π i, A → X i)
 
-/-- Projection -/
 def π (i : ι) : (Π i, X i) → X i := fun x => x i
-
-/-- The mediating map -/
 def mediate (a : A) : Π i, X i := fun i => f i a
 
 postfix:max "↠" => mediate
@@ -309,9 +291,12 @@ def lev : List α × List α → ℕ
         + 1
 termination_by s => s.1.length + s.2.length
 
-/- It works -/
-#guard lev ([1, 5, 2, 3], [1, 2, 4, 3]) == 2
-#guard lev ([1, 2, 3], [1, 2, 3]) == 0
+/-- info: 2 -/
+#guard_msgs in
+#eval lev ([1, 5, 2, 3], [1, 2, 4, 3])
+/-- info: 0 -/
+#guard_msgs in
+#eval lev ([1, 2, 3], [1, 2, 3])
 
 /-!
 Formulate this algorithm as a coalgebra-to-algebra morphism, and then solve with dynamic
@@ -367,9 +352,12 @@ partial def Split.hylo {α}
 
 def lev₂ : List α × List α → ℕ := Split.hylo Split.coalg Split.alg
 
-/- It works -/
-#guard lev₂ ([1, 5, 2, 3], [1, 2, 4, 3]) == 2
-#guard lev₂ ([1, 2, 3], [1, 2, 3]) == 0
+/-- info: 2 -/
+#guard_msgs in
+#eval lev₂ ([1, 5, 2, 3], [1, 2, 4, 3])
+/-- info: 0 -/
+#guard_msgs in
+#eval lev₂ ([1, 2, 3], [1, 2, 3])
 
 /-- Version of `map` handling mutable state. -/
 def Split.mapM {m F G} [Applicative m] (f : F → m G) : obj α F → m (obj α G)
