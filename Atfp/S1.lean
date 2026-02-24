@@ -15,18 +15,24 @@ section Exercise1
 
 /-! Define two different monoids whose carrier is the natural numbers. -/
 
-instance : Monoid ℕ where
+example : Monoid ℕ where
   one := 0
   mul := Nat.add
+  /- `∀ n, n + 0 = n` -/
   mul_one := Nat.add_zero
+  /- `∀ n, 0 + n = n`-/
   one_mul := Nat.zero_add
+  /- `∀ n m k, (n + m) + k = n + (m + k)` -/
   mul_assoc := Nat.add_assoc
 
-instance : Monoid ℕ where
+example : Monoid ℕ where
   one := 1
   mul := Nat.mul
+  /- `∀ n, n * 1 = n `-/
   mul_one := Nat.mul_one
+  /- `∀ n, 1 * n = n` -/
   one_mul := Nat.one_mul
+  /- `∀ n m k, (n * m) * k = n * (m + k)` -/
   mul_assoc := Nat.mul_assoc
 
 end Exercise1
@@ -49,27 +55,26 @@ What are the initial and final objects in Poset, the category of partially order
 monotone functions?
 -/
 
-/-- Partially ordered singleton set. -/
+/-- Partially ordered singleton set with trivial reflexive order -/
 def PartOrd.terminal : PartOrd := PartOrd.of PUnit
 
-/-- Partially ordered empty set. -/
-def PartOrd.initial : PartOrd := PartOrd.of PEmpty
-
+/-- Send every element to the unit -/
 def PartOrd.isTerminal : IsTerminal PartOrd.terminal :=
   IsTerminal.ofUniqueHom
-    (fun _ => PartOrd.ofHom ⟨fun _ => ⟨⟩, fun _ _ _ => le_rfl⟩)
-    (fun _ _ => PartOrd.ext fun _ => rfl)
+    (fun X => PartOrd.ofHom ⟨fun (_ : X) => ⟨⟩, fun (a b : X) (_ : a ≤ b) => le_rfl⟩)
+    (fun X (f : X ⟶ terminal) => PartOrd.ext fun x => (rfl : f x = f x))
 
+/-- Partially ordered empty set with empty order -/
+def PartOrd.initial : PartOrd := PartOrd.of PEmpty
+
+/-- Eliminate the element -/
 def PartOrd.isInitial : IsInitial PartOrd.initial :=
   IsInitial.ofUniqueHom
     (fun _ => PartOrd.ofHom ⟨nofun, nofun⟩)
     (fun _ _ => PartOrd.ext nofun)
 
-instance : HasTerminal PartOrd :=
-  IsTerminal.hasTerminal PartOrd.isTerminal
-
-instance : HasInitial PartOrd :=
-  IsInitial.hasInitial PartOrd.isInitial
+instance : HasTerminal PartOrd := PartOrd.isTerminal.hasTerminal
+instance : HasInitial PartOrd := PartOrd.isInitial.hasInitial
 
 end Exercise3
 
@@ -83,21 +88,20 @@ monoid homomorphisms?
 /-- The zero object (terminal and initial) is the commutative monoid on a singleton set. -/
 def CommMonCat.zero : CommMonCat := CommMonCat.of PUnit
 
+/-- Send every element to the unit -/
 def CommMonCat.isTerminal : IsTerminal CommMonCat.zero :=
   IsTerminal.ofUniqueHom
     (fun _ => ofHom ⟨⟨fun _ => 1, rfl⟩, fun _ _ => rfl⟩)
     (fun _ _ => ext fun _ => rfl)
 
+/-- Send every element to the identity -/
 def CommMonCat.isInitial : IsInitial CommMonCat.zero :=
   IsInitial.ofUniqueHom
     (fun _ => ofHom ⟨⟨fun ⟨⟩ => 1, rfl⟩, fun ⟨⟩ ⟨⟩ => (one_mul 1).symm⟩)
     (fun _ m => ext fun ⟨⟩ => m.hom.map_one)
 
-instance : HasTerminal CommMonCat :=
-  IsTerminal.hasTerminal CommMonCat.isTerminal
-
-instance : HasInitial CommMonCat :=
-  IsInitial.hasInitial CommMonCat.isInitial
+instance : HasTerminal CommMonCat := CommMonCat.isTerminal.hasTerminal
+instance : HasInitial CommMonCat := CommMonCat.isInitial.hasInitial
 
 end Exercise4
 
@@ -116,13 +120,17 @@ variable {W X Y : RelCat.{u}}
 
 open SetRel Function
 
+/--
+xy : X ⊕ Y is related to x : X if xy = .inl x, and
+xy : X ⊕ Y is related to x : Y if xy = .inr y
+-/
 def RelCat.prodFan (X Y : RelCat.{u}) : BinaryFan X Y :=
   BinaryFan.mk
-    (.ofRel (graph Sum.inl).inv)
-    (.ofRel (graph Sum.inr).inv)
+    ⟨{(xy, x) | xy = Sum.inl x}⟩
+    ⟨{(xy, y) | xy = Sum.inr y}⟩
 
 def RelCat.prodLift (f : W ⟶ X) (g : W ⟶ Y) : W ⟶ X ⊕ Y :=
-  .ofRel {(w, xy) | match xy with | .inl x => (w, x) ∈ f.rel | .inr y => (w, y) ∈ g.rel}
+  ⟨{(w, xy) | match xy with | .inl x => (w, x) ∈ f.rel | .inr y => (w, y) ∈ g.rel}⟩
 
 lemma RelCat.comp_fst_rel (m : W ⟶ X ⊕ Y) w x :
     (w, x) ∈ (m ≫ (prodFan X Y).fst).rel ↔ (w, Sum.inl x) ∈ m.rel :=
@@ -139,13 +147,11 @@ def RelCat.prodFan_isLimit : IsLimit (prodFan X Y) := by
   case uniq =>
     intro _ _ hfst hsnd
     ext ⟨w, x | y⟩
-    · rw [← comp_fst_rel, ← hfst]
-      rfl
-    · rw [← comp_snd_rel, ← hsnd]
-      rfl
+    · rw [← comp_fst_rel, ← hfst]; rfl
+    · rw [← comp_snd_rel, ← hsnd]; rfl
 
 instance (X Y : RelCat) : HasLimit (pair X Y) :=
-  HasLimit.mk ⟨RelCat.prodFan X Y, RelCat.prodFan_isLimit⟩
+  ⟨RelCat.prodFan X Y, RelCat.prodFan_isLimit⟩
 
 instance : HasBinaryProducts RelCat :=
   hasBinaryProducts_of_hasLimit_pair RelCat
@@ -186,7 +192,8 @@ example : I.out = I.out' := rfl
 
 /-!
 The `fold`-based implementation is O(n), which is inefficient.
-However, `out` can be implemented in O(1).
+However, `out` can be implemented in O(1) when the isomorphism
+is simply a wrapper type (as in OCaml).
 -/
 
 end Exercise6
@@ -219,30 +226,22 @@ def PolynomialFunctor.denotation : PolynomialFunctor → Type u ⥤ Type u
   | prod F G => {
       obj X := 〚F〛.obj X × 〚G〛.obj X
       map f := Prod.map (〚F〛.map f) (〚G〛.map f)
-      map_id := by
-        intro
-        simp only [Functor.map_id]
+      map_id X := by
+        rw [〚F〛.map_id, 〚G〛.map_id]
         rfl
-      map_comp := by
-        intros
-        simp only [Functor.map_comp]
+      map_comp f g := by
+        rw [〚F〛.map_comp, 〚G〛.map_comp]
         rfl
     }
   | coprod F G => {
       obj X := 〚F〛.obj X ⊕ 〚G〛.obj X
       map f := Sum.map (〚F〛.map f) (〚G〛.map f)
-      map_id := by
-        intro
-        simp only [Functor.map_id]
-        ext a
-        cases a with
-        | inl => simp only [Sum.map_inl, types_id_apply]
-        | inr => simp only [Sum.map_inr, types_id_apply]
-      map_comp := by
-        intros
-        ext
-        simp only [Functor.map_comp, types_comp_apply, Sum.map_map]
-        rfl
+      map_id X := by
+        rw [〚F〛.map_id, 〚G〛.map_id]
+        exact Sum.map_id_id
+      map_comp f g := by
+        rw [〚F〛.map_comp, 〚G〛.map_comp]
+        ext (_ | _) <;> rfl
     }
 
 variable (F : PolynomialFunctor.{u})
@@ -388,7 +387,7 @@ unsafe def Split.memo
     match (← get)[x]? with
     | some v => return v
     | none => do
-      let v := alg.str (← Split.mapM lev (coalg.str x))
+      let v := alg.str (← mapM lev (coalg.str x))
       modify (·.insert x v)
       return v
   fun x => (lev x).run' ∅
