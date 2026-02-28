@@ -359,15 +359,8 @@ namespace Section2
 def N : Type u ⥤ Type u where
   obj X := PUnit ⊕ X
   map := Sum.map id
-  map_id := by
-    intro
-    simp only [types, Sum.map_id_id]
-    rfl
-  map_comp := by
-    intros
-    ext
-    simp [types_comp_apply, Sum.map_map]
-    rfl
+  map_id := by intro; funext x; cases x <;> rfl
+  map_comp := by intros; funext x; cases x <;> rfl
 
 def D.Obj : ℕ → Type u
   | 0 => PEmpty
@@ -480,12 +473,14 @@ def initial.isInitial : IsInitial initial :=
     have h₁ :=
       calc f ∘ N.map h ∘ out
         _ = h ∘ in' ∘ out := congrArg (· ∘ out) hh
-        _ = h := by rw [this]; rfl
+        _ = h ∘ id := congrArg (h ∘ ·) this
+        _ = h := Function.comp_id h
     -- Similarly
     have h₂ :=
       calc f ∘ N.map (Nat.foldO f) ∘ out
         _ = Nat.foldO f ∘ in' ∘ out := congrArg (· ∘ out) Nat.foldO_str.symm
-        _ = Nat.foldO f := by rw [this]; rfl
+        _ = Nat.foldO f ∘ id := congrArg (Nat.foldO f ∘ ·) this
+        _ = Nat.foldO f := Function.comp_id (Nat.foldO f)
     -- Now we show that for all x : μN, we have that h x = Nat.foldO f x
     ext (x : μN)
     show h x = Nat.foldO f x
@@ -680,14 +675,21 @@ lemma PolynomialFunctor.preserves_eq {A : Type u} :
   | prod F G ihF ihG =>
     dsimp only [ℛ]
     ext ⟨_, _⟩ ⟨_, _⟩
-    rw [ihF, ihG, Prod.mk.injEq]
+    simp only [ihF, ihG]
+    constructor <;> intro h
+    · exact Prod.ext h.1 h.2
+    · exact ⟨congrArg Prod.fst h, congrArg Prod.snd h⟩
   | coprod F G ihF ihG =>
     dsimp only [ℛ]
     ext (_ | _) (_ | _)
-    · rw [ihF, Sum.inl.injEq]
+    · simp only [ihF]; constructor <;> intro h
+      · exact congrArg Sum.inl h
+      · exact Sum.inl.inj h
     · simp
     · simp
-    · rw [ihG, Sum.inr.injEq]
+    · simp only [ihG]; constructor <;> intro h
+      · exact congrArg Sum.inr h
+      · exact Sum.inr.inj h
 
 /-! Lemma 3.9.9 -/
 
@@ -1452,9 +1454,10 @@ def LatTy.comprehension {A : PartOrd} {X : FinTy} :
         apply Set.iUnion₂_subset
         intro x hx₁
         have hx₂ : x ∈ s₂ := hs hx₁
-        calc f (a₁, x)
-          _ ≤ f (a₂, x) := f.hom.monotone ⟨ha, le_rfl⟩
-          _ ≤ ⋃ x ∈ s₂, f (a₂, x) := Set.subset_biUnion_of_mem (u := fun x => f (a₂, x)) hx₂
+        have h₁ : f (a₁, x) ≤ f (a₂, x) := f.hom.monotone ⟨ha, le_rfl⟩
+        have h₂ : f (a₂, x) ≤ ⋃ y ∈ s₂, f (a₂, y) :=
+          Set.subset_biUnion_of_mem (u := fun y => f (a₂, y)) hx₂
+        exact h₁.trans h₂
     }
 
 instance FinTy.instFinite : ∀ T : FinTy, Finite 〚T〛
@@ -2063,8 +2066,8 @@ def U.map {L M : SemilatSupCat} (f : SupBotHom L M) : U.obj L ⟶ U.obj M where
     refine ⟨PartOrd.ofHom ⟨fun (l, dl) => f dl, ?_⟩, fun _ _ ⟨⟩ => ⟨⟨⟩, ?_⟩⟩
     · intro (x₁, dx₁) (x₁, dx₂) ⟨h₁, h₂⟩
       exact OrderHomClass.mono f h₂
-    · simp [U.obj]
-      rfl
+    · change f (_ ⊔ _) = f _ ⊔ f _
+      exact map_sup f _ _
 
 def U : SemilatSupCat ⥤ Change where
   obj := U.obj
@@ -2368,9 +2371,13 @@ variable {S : Type u} [inst : KleeneAlgebra S]
 
 example : ¬∃ ka : KleeneAlgebra ℕ∞, ka.toSemiring = instCommSemiringENat.toSemiring := by
   intro ⟨kleene, ha⟩
-  have : (3 : ℕ∞) + 3 = 6 := rfl
-  have := add_idem (3 : ℕ∞)
-  simp_all
+  have h₁ : (3 : ℕ∞) + 3 = 6 := rfl
+  have h₂ := @add_idem _ kleene.toIdemSemiring (3 : ℕ∞)
+  have heq : (@HAdd.hAdd ℕ∞ ℕ∞ ℕ∞ (@instHAdd ℕ∞ kleene.toIdemSemiring.toDistrib.toAdd) 3 3 = 3) =
+             (@HAdd.hAdd ℕ∞ ℕ∞ ℕ∞ (@instHAdd ℕ∞ instCommSemiringENat.toDistrib.toAdd) 3 3 = 3) := by
+    rw [ha]
+  have h₂' : (3 : ℕ∞) + 3 = 3 := cast heq h₂
+  exact absurd (h₁.symm.trans h₂') (by native_decide)
 
 /-! Example 5.1.19 -/
 
@@ -2531,7 +2538,7 @@ variable [PreservesColimitsOfShape ℕ F] [HasColimitsOfShape ℕ 𝓒]
 def μ (F : 𝓒 ⥤ 𝓒) := colimit (chain F)
 
 -- TODO break down into smaller definitions and lemmas
-
+set_option backward.isDefEq.respectTransparency false in
 def μ_iso : True := by
   let D : ℕ ⥤ 𝓒 := chain F
   let ccμF : Cocone D := colimit.cocone D
@@ -2572,7 +2579,7 @@ def μ_iso : True := by
     · let h := Nat.le_of_succ_le_succ f.le
       calc D.map f ≫ F.map (ι j)
         _ = D.map ⟨⟨f.le⟩⟩ ≫ F.map (ι j) := rfl
-        _ = F.map (D.map ⟨⟨h⟩⟩) ≫ F.map (ι j) := by rw [chain.map_succ]
+        _ = F.map (D.map ⟨⟨h⟩⟩) ≫ F.map (ι j) := by rw [chain.map_succ h]
         _ = F.map (D.map ⟨⟨h⟩⟩ ≫ ι j) := F.map_comp _ _ |>.symm
         _ = F.map (D.map ⟨⟨h⟩⟩ ≫ ccμF.ι.app j) := rfl
         _ = F.map (ccμF.ι.app i) := congrArg F.map (ccμF.w _)
