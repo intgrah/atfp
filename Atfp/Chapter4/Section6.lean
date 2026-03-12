@@ -1,9 +1,6 @@
 module
 
-public import Mathlib.CategoryTheory.Monad.Basic
 public import Mathlib.CategoryTheory.Monoidal.Cartesian.Basic
-public import Mathlib.CategoryTheory.Monoidal.Closed.Basic
-public import Mathlib.Data.Rel
 public import Mathlib.Order.Category.CompleteLat
 public import Mathlib.Order.FixedPoints
 

@@ -1,17 +1,12 @@
 module
 
-public import Mathlib.CategoryTheory.Monad.Basic
-public import Mathlib.CategoryTheory.Monoidal.Cartesian.Basic
-public import Mathlib.CategoryTheory.Monoidal.Closed.Basic
-public import Mathlib.Data.Finite.Prod
-public import Mathlib.Data.Finite.Sum
-public import Mathlib.Data.Fintype.Powerset
-public import Mathlib.Data.Sum.Order
 public import Mathlib.Order.Category.CompleteLat
-public import Mathlib.Order.Category.PartOrd
-public import Mathlib.Order.FixedPoints
 public import Mathlib.Order.ConditionallyCompleteLattice.Basic
+
 import Mathlib.Order.OrderIsoNat
+import Mathlib.Data.Finite.Prod
+import Mathlib.Data.Finite.Sum
+import Mathlib.Data.Fintype.Powerset
 
 public import Atfp.Chapter3
 public import Atfp.Chapter4.Section1

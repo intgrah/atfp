@@ -1,12 +1,8 @@
 module
 
-public import Mathlib.CategoryTheory.Monad.Basic
-public import Mathlib.CategoryTheory.Monoidal.Cartesian.Basic
-public import Mathlib.CategoryTheory.Monoidal.Closed.Basic
-public import Mathlib.Data.Sum.Order
-public import Mathlib.Order.Category.CompleteLat
-public import Mathlib.Order.FixedPoints
-public import Mathlib.Order.ConditionallyCompleteLattice.Basic
+import Mathlib.Data.Finset.Attr
+import Mathlib.Order.Hom.BoundedLattice
+import Mathlib.Tactic.SetLike
 
 public import Atfp.Chapter3
 
