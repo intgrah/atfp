@@ -1,10 +1,12 @@
-import Mathlib.Algebra.Category.MonCat.Basic
-import Mathlib.Algebra.Group.Nat.Defs
-import Mathlib.CategoryTheory.Category.RelCat
-import Mathlib.CategoryTheory.Endofunctor.Algebra
-import Mathlib.CategoryTheory.Limits.Shapes.BinaryProducts
-import Mathlib.CategoryTheory.Limits.Shapes.Terminal
-import Mathlib.Order.Category.PartOrd
+module
+
+public import Mathlib.Algebra.Category.MonCat.Basic
+public import Mathlib.CategoryTheory.Category.RelCat
+public import Mathlib.CategoryTheory.Endofunctor.Algebra
+public import Mathlib.CategoryTheory.Limits.Shapes.BinaryProducts
+public import Mathlib.Order.Category.PartOrd
+
+@[expose] public section
 
 open CategoryTheory Limits
 
@@ -106,8 +108,6 @@ and `B` is not the cartesian product of sets!)
 universe u
 
 variable {W X Y : RelCat.{u}}
-
-open SetRel Function
 
 /--
 xy : X ⊕ Y is related to x : X iff xy = .inl x,
