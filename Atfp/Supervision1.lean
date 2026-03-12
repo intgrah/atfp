@@ -275,7 +275,7 @@ section Exercise9
 The Levenshtein distance, or edit distance, between two strings be naively computed as follows:
 -/
 
-variable {α : Type} [DecidableEq α] [Hashable α]
+variable {α : Type} [DecidableEq α]
 
 /-- Levenshtein distance -/
 def lev : List α × List α → ℕ
@@ -343,14 +343,37 @@ abbrev Split.alg : Algebra (Split α) where
     | .cons x => x
     | .diff x y z => min (min x y) z + 1
 
-/-- Partial because well-foundedness is not proven -/
-partial def Split.hylo {α}
-    (coalg : Coalgebra (Split α))
-    (alg : Algebra (Split α)) [Inhabited alg.a] :
-    coalg.V → alg.a :=
-  alg.str ∘ map (hylo coalg alg) ∘ coalg.str
+inductive Split.Child {R : Type} : obj α R → R → Prop where
+  | cons {x} : Child (.cons x) x
+  | diff₁ {x y z} : Child (.diff x y z) x
+  | diff₂ {x y z} : Child (.diff x y z) y
+  | diff₃ {x y z} : Child (.diff x y z) z
 
-def lev₂ : List α × List α → ℕ := Split.hylo Split.coalg Split.alg
+def Split.mapChild {R S : Type} : (node : obj α R) → ((x : R) → Child node x → S) → obj α S
+  | .inl s₁, _ => .inl s₁
+  | .inr s₂, _ => .inr s₂
+  | .cons x, f => .cons (f x .cons)
+  | .diff x y z, f => .diff (f x .diff₁) (f y .diff₂) (f z .diff₃)
+
+def Split.hylo
+    (coalg : Coalgebra (Split α))
+    (wf : WellFounded fun x y => Child (coalg.str y) x)
+    (alg : Algebra (Split α)) :
+    coalg.V → alg.a :=
+  wf.fix fun v ih => alg.str (mapChild (coalg.str v) ih)
+
+theorem Split.coalg_wf :
+    WellFounded fun (x y : List α × List α) => Child (Split.coalg.str y) x := by
+  apply Subrelation.wf (r := InvImage (· < ·) fun s => s.1.length + s.2.length)
+  · rintro a ⟨_ | _, _ | _⟩ hab
+    · nomatch hab
+    · nomatch hab
+    · nomatch hab
+    · dsimp [Split.coalg] at hab
+      split at hab <;> cases hab <;> simp [InvImage, List.length] <;> omega
+  · exact InvImage.wf _ Nat.lt_wfRel.wf
+
+def lev₂ : List α × List α → ℕ := Split.hylo Split.coalg Split.coalg_wf Split.alg
 
 /-- info: 2 -/
 #guard_msgs in
@@ -359,29 +382,30 @@ def lev₂ : List α × List α → ℕ := Split.hylo Split.coalg Split.alg
 #guard_msgs in
 #eval lev₂ ([1, 2, 3], [1, 2, 3])
 
-/-- Version of `map` handling mutable state. -/
-def Split.mapM {m F G} [Applicative m] (f : F → m G) : obj α F → m (obj α G)
-  | .inl s => pure (.inl s)
-  | .inr s => pure (.inr s)
-  | .cons x => .cons <$> f x
-  | .diff x y z => .diff <$> f x <*> f y <*> f z
+def Split.mapChildM {R S : Type} {m : Type → Type} [Monad m] :
+    (node : obj α R) → ((x : R) → Child node x → m S) → m (obj α S)
+  | .inl s₁, _ => pure (.inl s₁)
+  | .inr s₂, _ => pure (.inr s₂)
+  | .cons x, f => .cons <$> f x .cons
+  | .diff x y z, f => .diff <$> f x .diff₁ <*> f y .diff₂ <*> f z .diff₃
 
-/-- Memoised version for dynamic programming -/
-unsafe def Split.memo
+def Split.memo
     (coalg : Coalgebra (Split α)) [BEq coalg.V] [Hashable coalg.V]
-    (alg : Algebra (Split α)) :
+    (alg : Algebra (Split α))
+    (wf : WellFounded fun x y => Child (coalg.str y) x) :
     coalg.V → alg.a :=
-  let rec lev (x : coalg.V) : StateM (Std.HashMap coalg.V alg.a) alg.a := do
-    match (← get)[x]? with
-    | some v => return v
-    | none => do
-      let v := alg.str (← mapM lev (coalg.str x))
-      modify (·.insert x v)
-      return v
-  fun x => (lev x).run' ∅
+  fun x => (go x).run' ∅
+  where go : coalg.V → StateM (Std.HashMap coalg.V alg.a) alg.a :=
+    wf.fix (C := fun _ => StateM (Std.HashMap coalg.V alg.a) alg.a) fun v ih => do
+      match (← get)[v]? with
+      | some r => return r
+      | none =>
+        let r := alg.str (← mapChildM (coalg.str v) ih)
+        modify (·.insert v r)
+        return r
 
-unsafe def lev₃ : List α × List α → ℕ :=
-  Split.memo Split.coalg Split.alg
+def lev₃ [Hashable α] : List α × List α → ℕ :=
+  Split.memo Split.coalg Split.alg Split.coalg_wf
 
 /-- info: 2 -/
 #guard_msgs in
