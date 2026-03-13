@@ -16,3 +16,9 @@ rev = "v4.29.0-rc2"
 
 [[lean_lib]]
 name = "Atfp"
+
+[[lean_lib]]
+name = "Atfp.Supervision1"
+
+[[lean_lib]]
+name = "Atfp.Supervision2"
