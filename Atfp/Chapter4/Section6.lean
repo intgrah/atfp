@@ -444,73 +444,64 @@ structure IsExpValid {𝕏 𝕐 : Change.{u}}
 
 noncomputable def exp (𝕏 𝕐 : Change) : Change where
   X := PartOrd.of (𝕏 ⟶ 𝕐)
-  Δ := PartOrd.of (([𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ) × ([𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ))
-  V := { (f, (df, g')) |
-    (∀ x dx, (hx : (x, dx) ∈ 𝕏.V) →
-      IsExpValid f df g' x dx hx) ∧
-    (∀ x₁ x₂ : 𝕏.X, x₁ ≤ x₂ →
-      ∀ (h₁ : (f.base x₁, df (x₁, 𝟬[𝕏] x₁)) ∈ 𝕐.V)
-        (h₂ : (f.base x₂, df (x₂, 𝟬[𝕏] x₂)) ∈ 𝕐.V),
-        𝕐.update ⟨_, h₁⟩ ≤ 𝕐.update ⟨_, h₂⟩) }
-  update | ⟨(f, df, g'), hvh⟩ => {
+  Δ := PartOrd.of ([𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ)
+  V := { (f, df) |
+    ∃ g', (∀ x dx, (hx : (x, dx) ∈ 𝕏.V) → IsExpValid f df g' x dx hx) }
+  update := fun ⟨(f, df), hv⟩ =>
+    let g' := hv.choose
+    let hva := hv.choose_spec
+    {
     base := PartOrd.ofHom {
-      toFun := fun x =>
+      toFun x :=
         𝕐.update ⟨(f.base x, df (x, 𝟬[𝕏] x)),
-          (hvh.1 x (𝟬[𝕏] x) (𝕏.zero_valid x)).hv₃⟩
-      monotone' := fun {x₁ x₂} h =>
-        hvh.2 x₁ x₂ h _ _
+          (hva x (𝟬[𝕏] x) (𝕏.zero_valid x)).hv₃⟩
+      monotone' {x₁ x₂} h := by
+        dsimp
+        trans (f.base x₂ ⨁[𝕐]df (x₁, 𝟬[𝕏] x₁))
+        · sorry
+        sorry
+
     }
     hasDeriv := ⟨g', fun x dx hx => by
-      have v := hvh.1 x dx hx
+      have v := hva x dx hx
       refine ⟨v.hv₄, ?_⟩
       exact v.eq₁.symm.trans v.eq₂⟩
   }
-  update_monotone := fun ⟨(f, df, g'), hvh⟩ => by
+  update_monotone := fun ⟨(f, df), hv⟩ => by
+    let hva := hv.choose_spec
     change f ≤ _
     intro x
     change f.base.hom x ≤ _
     exact 𝕐.update_monotone
-      ⟨_, (hvh.1 x (𝟬[𝕏] x) (𝕏.zero_valid x)).hv₃⟩
-  zero f := (f.hasDeriv.choose, f.hasDeriv.choose)
+      ⟨_, (hva x (𝟬[𝕏] x) (𝕏.zero_valid x)).hv₃⟩
+  zero f := f.hasDeriv.choose
   zero_valid f := by
     set f' := f.hasDeriv.choose
     have hf' := f.hasDeriv.choose_spec
-    refine ⟨fun x dx hx => ?_, fun x₁ x₂ h h₁ h₂ => ?_⟩
-    · have d := hf' x dx hx
+    exact ⟨f', fun x dx hx => by
+      have d := hf' x dx hx
       have d₀ := hf' x (𝟬[𝕏] x) (𝕏.zero_valid x)
       have d₁ := hf' (x ⨁[𝕏] dx) (𝟬[𝕏] (x ⨁[𝕏] dx))
         (𝕏.zero_valid (x ⨁[𝕏] dx))
       have upd₀ : 𝕐.update ⟨_, d₀.hy⟩ = f.base x := by
         rw [← d₀.eq, 𝕏.zero_update]
-      have upd₁ : 𝕐.update ⟨_, d₁.hy⟩ =
-          f.base (x ⨁[𝕏] dx) := by
+      have upd₁ : 𝕐.update ⟨_, d₁.hy⟩ = f.base (x ⨁[𝕏] dx) := by
         rw [← d₁.eq, 𝕏.zero_update]
       refine ⟨d.hy, d₁.hy, d₀.hy, ?_, ?_, ?_⟩
       · change (𝕐.update ⟨_, d₀.hy⟩, f' (x, dx)) ∈ 𝕐.V
-        rw [upd₀]
-        exact d.hy
+        rw [upd₀]; exact d.hy
       · change 𝕐.update ⟨_, d.hy⟩ = 𝕐.update ⟨_, d₁.hy⟩
         rw [← d.eq, upd₁]
       · change 𝕐.update ⟨_, d.hy⟩ = 𝕐.update ⟨(𝕐.update ⟨_, d₀.hy⟩, f' (x, dx)), _⟩
-        exact update_val_congr 𝕐 upd₀.symm rfl ..
-    · have d₁ := hf' x₁ (𝟬[𝕏] x₁) (𝕏.zero_valid x₁)
-      have d₂ := hf' x₂ (𝟬[𝕏] x₂) (𝕏.zero_valid x₂)
-      have e₁ : 𝕐.update ⟨_, h₁⟩ = f.base x₁ := by
-        rw [update_congr 𝕐 _ _ h₁ d₁.hy, ← d₁.eq, 𝕏.zero_update]
-      have e₂ : 𝕐.update ⟨_, h₂⟩ = f.base x₂ := by
-        rw [update_congr 𝕐 _ _ h₂ d₂.hy, ← d₂.eq, 𝕏.zero_update]
-      rw [e₁, e₂]
-      exact f.base.hom.monotone h
+        exact update_val_congr 𝕐 upd₀.symm rfl ..⟩
   zero_update f := by
     apply Hom.ext
     apply PartOrd.ext
     intro x
     change 𝕐.update ⟨(f.base x,
       f.hasDeriv.choose (x, 𝟬[𝕏] x)), _⟩ = f.base.hom x
-    have h := (f.hasDeriv.choose_spec x (𝟬[𝕏] x)
-      (𝕏.zero_valid x)).eq
-    rw [𝕏.zero_update] at h
-    rw [← h]
+    have d₀ := f.hasDeriv.choose_spec x (𝟬[𝕏] x) (𝕏.zero_valid x)
+    rw [← d₀.eq, 𝕏.zero_update]
 
 end Section7
 
