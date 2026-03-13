@@ -417,31 +417,100 @@ instance {𝕏 𝕐 : Change} : PartialOrder (𝕏 ⟶ 𝕐) :=
     (fun f => f.base.hom)
     (fun _ _ h => Hom.ext (PartOrd.Hom.ext h))
 
+@[simp]
+theorem update_congr (𝕏 : Change) (x : 𝕏.X) (dx : 𝕏.Δ)
+    (h₁ h₂ : (x, dx) ∈ 𝕏.V) :
+    𝕏.update ⟨(x, dx), h₁⟩ = 𝕏.update ⟨(x, dx), h₂⟩ := by
+  congr 1
+
+theorem update_val_congr (𝕏 : Change) {x₁ x₂ : 𝕏.X}
+    {dx₁ dx₂ : 𝕏.Δ} (hx : x₁ = x₂) (hdx : dx₁ = dx₂)
+    (h₁ : (x₁, dx₁) ∈ 𝕏.V) (h₂ : (x₂, dx₂) ∈ 𝕏.V) :
+    𝕏.update ⟨(x₁, dx₁), h₁⟩ = 𝕏.update ⟨(x₂, dx₂), h₂⟩ := by
+  subst hx; subst hdx; exact update_congr ..
+
+structure IsExpValid {𝕏 𝕐 : Change.{u}}
+    (f : 𝕏 ⟶ 𝕐)
+    (df : [𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ)
+    (g' : [𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ)
+    x dx
+    (_ : (x, dx) ∈ 𝕏.V) : Prop where
+  hv₁ : (f.base x, df (x, dx)) ∈ 𝕐.V
+  hv₂ : (f.base (x ⨁[𝕏] dx), df (x ⨁[𝕏] dx, 𝟬[𝕏] (x ⨁[𝕏] dx))) ∈ 𝕐.V
+  hv₃ : (f.base x, df (x, 𝟬[𝕏] x)) ∈ 𝕐.V
+  hv₄ : (𝕐.update ⟨_, hv₃⟩, g' (x, dx)) ∈ 𝕐.V
+  eq₁ : 𝕐.update ⟨_, hv₁⟩ = 𝕐.update ⟨_, hv₂⟩
+  eq₂ : 𝕐.update ⟨_, hv₁⟩ = 𝕐.update ⟨_, hv₄⟩
+
 noncomputable def exp (𝕏 𝕐 : Change) : Change where
   X := PartOrd.of (𝕏 ⟶ 𝕐)
-  Δ := PartOrd.of ([𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ)
-  V := { (f, df) : (𝕏 ⟶ 𝕐) × ([𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ) |
-      ∃ g' : [𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ, ∀ x dx,
-        (_ : (x, dx) ∈ 𝕏.V) →
-        -- TODO make this a dependent sum
-        (_ : (f.base x, df (x, dx)) ∈ 𝕐.V) →
-        (_ : (f.base (x ⨁[𝕏] dx), df (x ⨁[𝕏] dx, 𝟬[𝕏] (x ⨁[𝕏] dx))) ∈ 𝕐.V) →
-        (_ : (f.base x, df (x, 𝟬[𝕏] x)) ∈ 𝕐.V) →
-        (_ : (f.base x ⨁[𝕐] df (x, 𝟬[𝕏] x), g' (x, dx)) ∈ 𝕐.V) →
-        ((f.base x ⨁[𝕐] df (x, dx)) = f.base (x ⨁[𝕏] dx) ⨁[𝕐] df (x ⨁[𝕏] dx, 𝟬[𝕏] (x ⨁[𝕏] dx))) ∧
-        ((f.base x ⨁[𝕐] df (x, dx)) = (f.base x ⨁[𝕐] df (x, 𝟬[𝕏] x)) ⨁[𝕐] g' (x, dx))
-      }
-  update := sorry -- ⟨(f, df), h⟩ => fun x => f.base x ⨁[𝕐] df (x, 𝟬[𝕏] x)
-  update_monotone := sorry -- | ⟨(f, df), h⟩ => sorry
-  zero f := f.hasDeriv.choose
-  zero_valid := by
-    intro ⟨f, f', hf⟩
-    simp
-    sorry
-  zero_update := by
-    intro ⟨f, f', hf⟩
-    simp
-    sorry
+  Δ := PartOrd.of (([𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ) × ([𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ))
+  V := { (f, (df, g')) |
+    (∀ x dx, (hx : (x, dx) ∈ 𝕏.V) →
+      IsExpValid f df g' x dx hx) ∧
+    (∀ x₁ x₂ : 𝕏.X, x₁ ≤ x₂ →
+      ∀ (h₁ : (f.base x₁, df (x₁, 𝟬[𝕏] x₁)) ∈ 𝕐.V)
+        (h₂ : (f.base x₂, df (x₂, 𝟬[𝕏] x₂)) ∈ 𝕐.V),
+        𝕐.update ⟨_, h₁⟩ ≤ 𝕐.update ⟨_, h₂⟩) }
+  update | ⟨(f, df, g'), hvh⟩ => {
+    base := PartOrd.ofHom {
+      toFun := fun x =>
+        𝕐.update ⟨(f.base x, df (x, 𝟬[𝕏] x)),
+          (hvh.1 x (𝟬[𝕏] x) (𝕏.zero_valid x)).hv₃⟩
+      monotone' := fun {x₁ x₂} h =>
+        hvh.2 x₁ x₂ h _ _
+    }
+    hasDeriv := ⟨g', fun x dx hx => by
+      have v := hvh.1 x dx hx
+      refine ⟨v.hv₄, ?_⟩
+      exact v.eq₁.symm.trans v.eq₂⟩
+  }
+  update_monotone := fun ⟨(f, df, g'), hvh⟩ => by
+    change f ≤ _
+    intro x
+    change f.base.hom x ≤ _
+    exact 𝕐.update_monotone
+      ⟨_, (hvh.1 x (𝟬[𝕏] x) (𝕏.zero_valid x)).hv₃⟩
+  zero f := (f.hasDeriv.choose, f.hasDeriv.choose)
+  zero_valid f := by
+    set f' := f.hasDeriv.choose
+    have hf' := f.hasDeriv.choose_spec
+    refine ⟨fun x dx hx => ?_, fun x₁ x₂ h h₁ h₂ => ?_⟩
+    · have d := hf' x dx hx
+      have d₀ := hf' x (𝟬[𝕏] x) (𝕏.zero_valid x)
+      have d₁ := hf' (x ⨁[𝕏] dx) (𝟬[𝕏] (x ⨁[𝕏] dx))
+        (𝕏.zero_valid (x ⨁[𝕏] dx))
+      have upd₀ : 𝕐.update ⟨_, d₀.hy⟩ = f.base x := by
+        rw [← d₀.eq, 𝕏.zero_update]
+      have upd₁ : 𝕐.update ⟨_, d₁.hy⟩ =
+          f.base (x ⨁[𝕏] dx) := by
+        rw [← d₁.eq, 𝕏.zero_update]
+      refine ⟨d.hy, d₁.hy, d₀.hy, ?_, ?_, ?_⟩
+      · change (𝕐.update ⟨_, d₀.hy⟩, f' (x, dx)) ∈ 𝕐.V
+        rw [upd₀]
+        exact d.hy
+      · change 𝕐.update ⟨_, d.hy⟩ = 𝕐.update ⟨_, d₁.hy⟩
+        rw [← d.eq, upd₁]
+      · change 𝕐.update ⟨_, d.hy⟩ = 𝕐.update ⟨(𝕐.update ⟨_, d₀.hy⟩, f' (x, dx)), _⟩
+        exact update_val_congr 𝕐 upd₀.symm rfl ..
+    · have d₁ := hf' x₁ (𝟬[𝕏] x₁) (𝕏.zero_valid x₁)
+      have d₂ := hf' x₂ (𝟬[𝕏] x₂) (𝕏.zero_valid x₂)
+      have e₁ : 𝕐.update ⟨_, h₁⟩ = f.base x₁ := by
+        rw [update_congr 𝕐 _ _ h₁ d₁.hy, ← d₁.eq, 𝕏.zero_update]
+      have e₂ : 𝕐.update ⟨_, h₂⟩ = f.base x₂ := by
+        rw [update_congr 𝕐 _ _ h₂ d₂.hy, ← d₂.eq, 𝕏.zero_update]
+      rw [e₁, e₂]
+      exact f.base.hom.monotone h
+  zero_update f := by
+    apply Hom.ext
+    apply PartOrd.ext
+    intro x
+    change 𝕐.update ⟨(f.base x,
+      f.hasDeriv.choose (x, 𝟬[𝕏] x)), _⟩ = f.base.hom x
+    have h := (f.hasDeriv.choose_spec x (𝟬[𝕏] x)
+      (𝕏.zero_valid x)).eq
+    rw [𝕏.zero_update] at h
+    rw [← h]
 
 end Section7
 
