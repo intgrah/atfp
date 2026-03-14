@@ -315,6 +315,8 @@ end Section5
 
 section Section6
 
+variable {𝕏 𝕐 𝕫 : Change}
+
 /-! Definition 4.6.9 -/
 
 def coprod (𝕏 𝕐 : Change) : Change where
@@ -337,11 +339,41 @@ def coprod (𝕏 𝕐 : Change) : Change where
     | .inl x => congrArg Sum.inl (𝕏.zero_update x)
     | .inr y => congrArg Sum.inr (𝕐.zero_update y)
 
+noncomputable def inl : 𝕏 ⟶ 𝕏.coprod 𝕐 where
+  base := PartOrd.inl
+  hasDeriv := ⟨fun _ => 𝟙 _, fun _ _ => rfl⟩
+
+noncomputable def inr : 𝕐 ⟶ 𝕏.coprod 𝕐 where
+  base := PartOrd.inr
+  hasDeriv := ⟨fun _ => 𝟙 _, fun _ _ => rfl⟩
+
+noncomputable def coprod_desc (f : 𝕏 ⟶ 𝕫) (g : 𝕐 ⟶ 𝕫) : 𝕏.coprod 𝕐 ⟶ 𝕫 where
+  base := PartOrd.coprod_desc f.base g.base
+  hasDeriv := by
+    obtain ⟨f', hf'⟩ := f.hasDeriv
+    obtain ⟨g', hg'⟩ := g.hasDeriv
+    exact ⟨fun | .inl x => f' x | .inr y => g' y,
+      fun | .inl x, dx => hf' x dx | .inr y, dy => hg' y dy⟩
+
+noncomputable def dist : 𝕏.prod (𝕐.coprod 𝕫) ≅ (𝕏.prod 𝕐).coprod (𝕏.prod 𝕫) where
+  hom := {
+    base := PartOrd.dist.hom
+    hasDeriv := ⟨fun | (_, .inl _) => 𝟙 _ | (_, .inr _) => 𝟙 _,
+      fun | (_, .inl _), _ => rfl | (_, .inr _), _ => rfl⟩
+  }
+  inv := {
+    base := PartOrd.dist.inv
+    hasDeriv := ⟨fun | .inl _ => 𝟙 _ | .inr _ => 𝟙 _,
+      fun | .inl _, _ => rfl | .inr _, _ => rfl⟩
+  }
+  hom_inv_id := Hom.ext <| PartOrd.ext fun | (_, .inl _) => rfl | (_, .inr _) => rfl
+  inv_hom_id := Hom.ext <| PartOrd.ext fun | .inl _ => rfl | .inr _ => rfl
+
 end Section6
 
 section Section7
 
-variable {𝕏 𝕐 𝕫 : Change}
+variable {𝕏 𝕐 𝕫 𝕎 : Change}
 
 instance : PartialOrder (𝕏 ⟶ 𝕐) :=
   PartialOrder.lift
@@ -414,6 +446,11 @@ def prod_lift (f : 𝕫 ⟶ 𝕏) (g : 𝕫 ⟶ 𝕐) : 𝕫 ⟶ 𝕏.prod 𝕐 
     refine ⟨fun x => PartOrd.prod_lift (f' x) (g' x), ?_⟩
     intro x dx
     exact Prod.ext (hf' x dx) (hg' x dx)
+
+def tensor_exchange :
+    (𝕏.prod 𝕐).prod (𝕫.prod 𝕎) ≅ (𝕏.prod 𝕫).prod (𝕐.prod 𝕎) where
+  hom := prod_lift (prod_lift (fst ≫ fst) (snd ≫ fst)) (prod_lift (fst ≫ snd) (snd ≫ snd))
+  inv := prod_lift (prod_lift (fst ≫ fst) (snd ≫ fst)) (prod_lift (fst ≫ snd) (snd ≫ snd))
 
 def prod_isLimit : IsLimit (BinaryFan.mk (P := 𝕏.prod 𝕐) fst snd) :=
   BinaryFan.isLimitMk
@@ -566,6 +603,12 @@ noncomputable def tensorProductAdjunction (𝕏 : Change) :
     counit.app _ := ev
   }
 
+noncomputable def ev' : (exp 𝕏 𝕐).prod 𝕏 ⟶ 𝕐 :=
+  prod_lift snd fst ≫ ev
+
+noncomputable def curry_left (f : 𝕏.prod 𝕐 ⟶ 𝕫) : 𝕏 ⟶ exp 𝕐 𝕫 :=
+  coev ≫ (expFunctor 𝕐).map (prod_lift snd fst ≫ f)
+
 noncomputable instance : MonoidalClosed Change :=
   MonoidalClosed.mk fun 𝕏 => Closed.mk _ (tensorProductAdjunction 𝕏)
 
@@ -599,6 +642,28 @@ def comonad : Comonad Change where
   δ.app 𝕏 := {
     base := PartOrd.disc.comonad.δ.app 𝕏.X
     hasDeriv := ⟨fun _ => PartOrd.terminal.from _, fun _ _ => rfl⟩
+  }
+
+def iso_terminal : [terminal]ᵈ ≅ terminal where
+  hom := {
+    base := PartOrd.disc.iso_terminal.hom
+    hasDeriv := ⟨fun _ => PartOrd.terminal.from _, fun _ _ => rfl⟩
+  }
+  inv := {
+    base := PartOrd.disc.iso_terminal.inv
+    hasDeriv := ⟨fun _ => PartOrd.terminal.from _, fun _ _ => rfl⟩
+  }
+
+def iso_prod (𝕏 𝕐 : Change) : [𝕏.prod 𝕐]ᵈ ≅ ([𝕏]ᵈ).prod ([𝕐]ᵈ) where
+  hom := {
+    base := PartOrd.disc.iso_prod 𝕏.X 𝕐.X |>.hom
+    hasDeriv := ⟨fun _ => PartOrd.ofHom ⟨fun ⟨⟩ => (⟨⟩, ⟨⟩), fun _ _ _ => le_rfl⟩,
+      fun _ _ => rfl⟩
+  }
+  inv := {
+    base := PartOrd.disc.iso_prod 𝕏.X 𝕐.X |>.inv
+    hasDeriv := ⟨fun _ => PartOrd.ofHom ⟨fun ⟨⟨⟩, ⟨⟩⟩ => ⟨⟩, fun _ _ _ => le_rfl⟩,
+      fun _ _ => rfl⟩
   }
 
 end disc
@@ -647,6 +712,11 @@ def sup {L : SemilatSupCat} : (U.obj L).prod (U.obj L) ⟶ U.obj L where
     intro (l₁, l₂) (dl₁, dl₂)
     change L at l₁ l₂ dl₁ dl₂
     exact sup_sup_sup_comm l₁ dl₁ l₂ dl₂
+
+def one {𝕏 : Change} : disc 𝕏 ⟶ U.obj (PartOrd.powerset.obj 𝕏.X) where
+  base := PartOrd.one
+  hasDeriv := ⟨fun _ => PartOrd.ofHom ⟨fun _ => (∅ : Set 𝕏.X), fun _ _ _ => le_rfl⟩,
+    fun x ⟨⟩ => (Set.union_empty {x}).symm⟩
 
 end Section9
 
