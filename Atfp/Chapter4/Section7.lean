@@ -1,5 +1,10 @@
 module
 
+public import Mathlib.SetTheory.Cardinal.Finite
+
+import Mathlib.Data.Finite.Prod
+import Mathlib.Data.Finite.Sum
+
 import Atfp.Chapter4.Section1
 public import Atfp.Chapter4.Section4.Datafun
 public import Atfp.Chapter4.Section6
@@ -8,7 +13,7 @@ public import Atfp.Chapter4.Section6
 
 namespace Datafun
 
-open CategoryTheory Limits MonoidalCategory
+open CategoryTheory MonoidalCategory
 
 universe u
 
@@ -52,6 +57,15 @@ lemma FinTy.toTy_denotationC {T : FinTy.{u}} :〚T〛 = 〚T.toTy〛 := by
     rw [ihT]
     rfl
 
+instance LatTy.instSemilatticeSupC : (L : LatTy) → SemilatticeSup 〚L〛.X
+  | unit => inferInstanceAs (SemilatticeSup PUnit)
+  | prod L₁ L₂ => @Prod.instSemilatticeSup _ _ L₁.instSemilatticeSupC L₂.instSemilatticeSupC
+  | powerset T => inferInstanceAs (SemilatticeSup (Set T.denotationC.X))
+
+noncomputable instance LatTy.instOrderBotC : (L : LatTy) → OrderBot 〚L〛.X
+  | unit => inferInstanceAs (OrderBot PUnit)
+  | prod L₁ L₂ => @Prod.instOrderBot _ _ _ _ L₁.instOrderBotC L₂.instOrderBotC
+  | powerset T => inferInstanceAs (OrderBot (Set T.denotationC.X))
 
 noncomputable def LatTy.botC : (L : LatTy) → Change.terminal ⟶ 〚L〛
   | .unit => Change.terminal.from _
@@ -66,8 +80,8 @@ noncomputable def LatTy.supC : (L : LatTy) → 〚L〛.prod 〚L〛 ⟶ 〚L〛
   | .powerset _ => Change.sup
 
 noncomputable def LatTy.comprehensionC {𝕏 : Change} {T : FinTy} :
-    (L : LatTy) → (𝕏.prod ([〚T〛]ᵈ) ⟶ 〚L〛) →
-      (𝕏.prod 〚𝒫 T〛 ⟶ 〚L〛)
+    (L : LatTy) → (𝕏 ⊗ ([〚T〛]ᵈ) ⟶ 〚L〛) →
+      (𝕏 ⊗ 〚𝒫 T〛 ⟶ 〚L〛)
   | .unit, _ => Change.terminal.from _
   | .prod L₁ L₂, f =>
     prod_lift (L₁.comprehensionC (f ≫ fst)) (L₂.comprehensionC (f ≫ snd))
@@ -127,21 +141,62 @@ noncomputable def LatTy.comprehensionC {𝕏 : Change} {T : FinTy} :
                 ⟨𝕏.update_monotone a da, rfl⟩) hy⟩
     }
 
+instance FinTy.instFiniteC : ∀ T : FinTy, Finite 〚T〛.X
+  | unit => Finite.of_fintype PUnit
+  | prod T₁ T₂ => @Finite.instProd 〚T₁〛.X 〚T₂〛.X T₁.instFiniteC T₂.instFiniteC
+  | coprod T₁ T₂ => @Finite.instSum 〚T₁〛.X 〚T₂〛.X T₁.instFiniteC T₂.instFiniteC
+  | powerset T => @Set.instFinite 〚T〛.X T.instFiniteC
+  | discrete T => T.instFiniteC
+
+instance LatTy.instFiniteC : ∀ L : LatTy, Finite 〚L〛.X
+  | unit => Finite.of_fintype PUnit
+  | prod L₁ L₂ => @Finite.instProd _ _ L₁.instFiniteC L₂.instFiniteC
+  | powerset T => @Set.instFinite _ T.instFiniteC
+
 noncomputable def LatTy.fixC {𝕏 : Change} {L : LatTy}
-    (f : [𝕏]ᵈ.prod 〚L〛 ⟶ 〚L〛) :
+    (f : [𝕏]ᵈ ⊗ 〚L〛 ⟶ 〚L〛) :
     [𝕏]ᵈ ⟶ 〚L〛 where
   base := @PartOrd.ofHom [𝕏]ᵈ.X 〚L〛.X _ _ {
     toFun a :=
       let f_a : 〚L〛.X →o 〚L〛.X :=
         ⟨fun x => f.base (a, x), fun _ _ hxy => f.base.hom.monotone ⟨rfl, hxy⟩⟩
       f_a^[L.card] (L.botC.base ⟨⟩)
-    monotone' := fun _ _ h => h ▸ le_rfl }
+    monotone' | _, _, rfl => le_rfl }
   hasDeriv :=
     ⟨fun _ => PartOrd.ofHom ⟨fun ⟨⟩ => 〚L〛.zero _, fun _ _ _ => le_rfl⟩,
       fun _ ⟨⟩ => (〚L〛.zero_update _).symm⟩
 
+theorem FinTy.nat_card_eqC : ∀ T : FinTy, Nat.card 〚T〛.X = T.card
+  | unit => by
+    change Nat.card PUnit = 1
+    simp [Nat.card_eq_fintype_card]
+  | prod T₁ T₂ => by
+    change Nat.card (〚T₁〛.X × 〚T₂〛.X) = T₁.card * T₂.card
+    rw [Nat.card_prod, T₁.nat_card_eqC, T₂.nat_card_eqC]
+  | coprod T₁ T₂ => by
+    change Nat.card (〚T₁〛.X ⊕ 〚T₂〛.X) = T₁.card + T₂.card
+    rw [@Nat.card_sum _ _ T₁.instFiniteC T₂.instFiniteC, T₁.nat_card_eqC, T₂.nat_card_eqC]
+  | powerset T => by
+    change Nat.card (Set 〚T〛.X) = 2 ^ T.card
+    rw [show Set 〚T〛.X = (〚T〛.X → Prop) from rfl, @Nat.card_fun _ _ T.instFiniteC, T.nat_card_eqC]
+    simp [Nat.card_eq_fintype_card]
+  | discrete T => T.nat_card_eqC
+
+theorem LatTy.nat_card_eqC : ∀ L : LatTy, Nat.card 〚L〛.X = L.card
+  | unit => by
+    change Nat.card PUnit = 1
+    simp [Nat.card_eq_fintype_card]
+  | prod L₁ L₂ => by
+    change Nat.card (〚L₁〛.X × 〚L₂〛.X) = L₁.card * L₂.card
+    rw [Nat.card_prod, L₁.nat_card_eqC, L₂.nat_card_eqC]
+  | powerset T => by
+    change Nat.card (Set T.denotationC.X) = 2 ^ T.card
+    rw [show Set T.denotationC.X = (T.denotationC.X → Prop) from rfl,
+      @Nat.card_fun _ _ T.instFiniteC, T.nat_card_eqC]
+    simp [Nat.card_eq_fintype_card]
+
 theorem LatTy.fixC_isFixedPt {𝕏 : Change} {L : LatTy}
-    (f : [𝕏]ᵈ.prod 〚L〛 ⟶ 〚L〛) (a : [𝕏]ᵈ.X) :
+    (f : [𝕏]ᵈ ⊗ 〚L〛 ⟶ 〚L〛) (a : [𝕏]ᵈ.X) :
     f.base (a, (L.fixC f).base a) = (L.fixC f).base a := by
   sorry
 
@@ -162,7 +217,7 @@ noncomputable def Ctx.lookupC {q A} :
 
 noncomputable def Ctx.dropC (Γ : Ctx) : 〚Γ〛 ⟶ 〚[Γ]ᵈ〛 :=
   match Γ with
-  | [] => 𝟙 _
+  | [] => 𝟙 〚[]〛
   | (.none, _) :: Γ => fst ≫ Ctx.dropC Γ
   | (.D, A) :: Γ => Ctx.dropC Γ ⊗ₘ 𝟙 [〚A〛]ᵈ
 
