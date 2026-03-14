@@ -96,8 +96,7 @@ def f : 𝒫ℕ ⟶ 𝒫ℕ :=
       exact h
   }
 
-def f'₀ : ∀ _ : 𝒫ℕ, 𝒫ℕ ⟶ 𝒫ℕ := fun _ =>
-  PartOrd.ofHom ⟨fun dx => dx, fun _ _ h => h⟩
+def f'₀ : ∀ _ : 𝒫ℕ, 𝒫ℕ ⟶ 𝒫ℕ := fun _ => 𝟙 𝒫ℕ
 
 example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₀ := by
   intro (x : 𝒫ℕ) (dx : 𝒫ℕ)
@@ -152,11 +151,7 @@ def dx : ℕ → PartOrd.of L
 
 end
 
-def semifix
-    (_ : @IsDerivative
-      (Change.ofCompleteLat L)
-      (Change.ofCompleteLat L)
-      f f') : L :=
+def semifix : L :=
   ⨆ i, x L f f' i
 
 /-! Theorem 4.6.6 -/
@@ -167,7 +162,7 @@ theorem semifix_fix
       (Change.ofCompleteLat L)
       (Change.ofCompleteLat L)
       f f') :
-    semifix L f f' der = f.hom.lfp := by
+    semifix L f f' = f.hom.lfp := by
   let x := x L f f'
   let dx := dx L f f'
   have : ∀ i, x (i + 1) = f (x i) := by
@@ -594,7 +589,7 @@ def comonad : Comonad Change where
   obj := disc
   map f := {
     base := PartOrd.disc.comonad.map f.base
-    hasDeriv := ⟨fun _ => PartOrd.ofHom ⟨fun _ => ⟨⟩, fun _ _ _ => le_rfl⟩, fun _ _ => rfl⟩
+    hasDeriv := ⟨fun _ => PartOrd.terminal.from _, fun _ _ => rfl⟩
   }
   ε.app 𝕏 := {
     base := PartOrd.disc.comonad.ε.app 𝕏.X
@@ -603,7 +598,7 @@ def comonad : Comonad Change where
   }
   δ.app 𝕏 := {
     base := PartOrd.disc.comonad.δ.app 𝕏.X
-    hasDeriv := ⟨fun _ => PartOrd.ofHom ⟨fun _ => ⟨⟩, fun _ _ _ => le_rfl⟩, fun _ _ => rfl⟩
+    hasDeriv := ⟨fun _ => PartOrd.terminal.from _, fun _ _ => rfl⟩
   }
 
 end disc
