@@ -168,11 +168,7 @@ def ev : A ⊗ of (A ⟶ B) ⟶ B :=
   }
 
 def ev' : of (A ⟶ B) ⊗ A ⟶ B :=
-  ofHom {
-    toFun := fun (f, a) => f a
-    monotone' := fun (f₁, _) (_, a₂) ⟨hf, ha⟩ =>
-      (f₁.hom.monotone ha).trans (hf a₂)
-  }
+  prod_lift snd fst ≫ ev
 
 def coev : B ⟶ of (A ⟶ A.prod B) :=
   ofHom {
@@ -200,13 +196,7 @@ def curry (f : A ⊗ B ⟶ C) : B ⟶ of (A ⟶ C) :=
   }
 
 def curry_left (f : A ⊗ B ⟶ C) : A ⟶ of (B ⟶ C) :=
-  ofHom {
-    toFun a := ofHom {
-      toFun b := f (a, b)
-      monotone' := fun _ _ hb => f.hom.monotone ⟨le_rfl, hb⟩
-    }
-    monotone' := fun _ _ ha _ => f.hom.monotone ⟨ha, le_rfl⟩
-  }
+  coev ≫ (expFunctor B).map (prod_lift snd fst ≫ f)
 
 def uncurry (f : B ⟶ of (A ⟶ C)) : A ⊗ B ⟶ C :=
   ofHom {
