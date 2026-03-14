@@ -1,15 +1,13 @@
 module
 
 public import Mathlib.Order.Category.CompleteLat
-public import Mathlib.Order.ConditionallyCompleteLattice.Basic
+public import Mathlib.SetTheory.Cardinal.Finite
 
-import Mathlib.Order.OrderIsoNat
 import Mathlib.Data.Finite.Prod
 import Mathlib.Data.Finite.Sum
-import Mathlib.Data.Fintype.Powerset
 
 public import Atfp.Chapter3
-public import Atfp.Chapter4.Section1
+import Atfp.Chapter4.Section1
 public import Atfp.Chapter4.Section3
 public import Atfp.Chapter4.Section4.Datafun
 
@@ -99,13 +97,13 @@ lemma LatTy.sup'_le (L : LatTy) {x y z : 〚L〛} (hx : x ≤ z) (hy : y ≤ z) 
   | prod L₁ L₂ ih₁ ih₂ => exact ⟨ih₁ hx.1 hy.1, ih₂ hx.2 hy.2⟩
   | powerset T => exact Set.union_subset hx hy
 
-instance LatTy.instSemilatticeSup' (L : LatTy) : SemilatticeSup 〚L〛 where
+instance LatTy.instSemilatticeSup (L : LatTy) : SemilatticeSup 〚L〛 where
   sup := L.sup'
   le_sup_left := L.le_sup'_left
   le_sup_right := L.le_sup'_right
   sup_le _ _ _ := L.sup'_le
 
-instance LatTy.instOrderBot' (L : LatTy) : OrderBot 〚L〛 where
+instance LatTy.instOrderBot (L : LatTy) : OrderBot 〚L〛 where
   bot := L.bot'
   bot_le := L.bot'_le
 
@@ -116,14 +114,6 @@ def LatTy.sup : ∀ L : LatTy, 〚L〛 ⊗ 〚L〛 ⟶ 〚L〛
   | .unit => terminal.from _
   | .prod L₁ L₂ => tensor_exchange.hom ≫ (sup L₁ ⊗ₘ sup L₂)
   | .powerset T => U.sup (PartOrd.powerset.obj 〚T〛)
-
-instance LatTy.instCompleteLattice : ∀ L : LatTy.{u}, CompleteLattice 〚L〛
-  | unit => inferInstanceAs (CompleteLattice PUnit)
-  | prod L₁ L₂ =>
-    let := L₁.instCompleteLattice
-    let := L₂.instCompleteLattice
-    inferInstanceAs (CompleteLattice (〚L₁〛 × 〚L₂〛))
-  | powerset T => inferInstanceAs (CompleteLattice (Set 〚T〛))
 
 def LatTy.comprehension {A : PartOrd} {X : FinTy} :
     ∀ L : LatTy, (A ⊗ [〚X〛]ᵈ ⟶ 〚L〛) → (A ⊗ 〚𝒫 X〛 ⟶ 〚L〛)
@@ -158,22 +148,66 @@ instance LatTy.instFinite : ∀ L : LatTy, Finite 〚L〛
   | prod L₁ L₂ => @Finite.instProd 〚L₁〛 〚L₂〛 L₁.instFinite L₂.instFinite
   | powerset T => @Set.instFinite 〚T〛 T.instFinite
 
-lemma LatTy.wf_asc (L : LatTy) : WF_asc 〚L〛 := by
-  intro ⟨chain, hchain⟩
-  have : StrictMono chain := strictMono_nat_of_lt_succ hchain
-  exact not_strictMono_of_wellFoundedGT chain this
+def FinTy.card : FinTy → ℕ
+  | unit => 1
+  | prod T₁ T₂ => T₁.card * T₂.card
+  | coprod T₁ T₂ => T₁.card + T₂.card
+  | powerset T => 2 ^ T.card
+  | discrete T => T.card
 
-noncomputable def LatTy.fix {A : PartOrd} {L : LatTy}
-(f : [A]ᵈ ⊗ 〚L〛 ⟶ 〚L〛) :
+def LatTy.card : LatTy → ℕ
+  | unit => 1
+  | prod L₁ L₂ => L₁.card * L₂.card
+  | powerset T => 2 ^ T.card
+
+def LatTy.fix {A : PartOrd} {L : LatTy}
+    (f : [A]ᵈ ⊗ 〚L〛 ⟶ 〚L〛) :
     [A]ᵈ ⟶ 〚L〛 :=
   @PartOrd.ofHom [A]ᵈ 〚L〛 _ _ {
     toFun a :=
       let f_a : 〚L〛 →o 〚L〛 :=
         ⟨fun x => f (a, x), fun _ _ hxy => f.hom.monotone ⟨rfl, hxy⟩⟩
-      have := semilattice_wf_asc_lfp L.wf_asc f_a
-      this.choose
+      f_a^[L.card] ⊥
     monotone' _ _ | rfl => le_rfl
   }
+
+theorem FinTy.nat_card_eq : ∀ T : FinTy, Nat.card 〚T〛 = T.card
+  | unit => by
+    change Nat.card PUnit = 1
+    simp [Nat.card_eq_fintype_card]
+  | prod T₁ T₂ => by
+    change Nat.card (〚T₁〛 × 〚T₂〛) = T₁.card * T₂.card
+    rw [Nat.card_prod, T₁.nat_card_eq, T₂.nat_card_eq]
+  | coprod T₁ T₂ => by
+    change Nat.card (〚T₁〛 ⊕ 〚T₂〛) = T₁.card + T₂.card
+    rw [@Nat.card_sum _ _ T₁.instFinite T₂.instFinite, T₁.nat_card_eq, T₂.nat_card_eq]
+  | powerset T => by
+    change Nat.card (Set 〚T〛) = 2 ^ T.card
+    rw [show Set 〚T〛 = (〚T〛 → Prop) from rfl, @Nat.card_fun _ _ T.instFinite,
+      T.nat_card_eq]
+    simp [Nat.card_eq_fintype_card]
+  | discrete T => T.nat_card_eq
+
+theorem LatTy.nat_card_eq : ∀ L : LatTy, Nat.card 〚L〛 = L.card
+  | unit => by
+    change Nat.card PUnit = 1
+    simp [Nat.card_eq_fintype_card]
+  | prod L₁ L₂ => by
+    change Nat.card (〚L₁〛 × 〚L₂〛) = L₁.card * L₂.card
+    rw [Nat.card_prod, L₁.nat_card_eq, L₂.nat_card_eq]
+  | powerset T => by
+    change Nat.card (Set 〚T〛) = 2 ^ T.card
+    rw [show Set 〚T〛 = (〚T〛 → Prop) from rfl, @Nat.card_fun _ _ T.instFinite,
+      T.nat_card_eq]
+    simp [Nat.card_eq_fintype_card]
+
+theorem LatTy.fix_isFixedPt {A : PartOrd} {L : LatTy}
+    (f : [A]ᵈ ⊗ 〚L〛 ⟶ 〚L〛) (a : [A]ᵈ) :
+    f (a, (LatTy.fix f).hom a) = (LatTy.fix f).hom a := by
+  have h := iterate_bot_stabilize
+    (L := 〚L〛) (f := ⟨fun x => f (a, x), fun _ _ hxy => f.hom.monotone ⟨rfl, hxy⟩⟩)
+    L.card (by rw [L.nat_card_eq])
+  exact h
 
 set_option hygiene false in
 notation "〚" Γ "〛" => Ctx.denotation Γ
@@ -214,7 +248,7 @@ set_option hygiene false in
 notation "〚" h "〛" => HasType.denotation h
 
 open Ctx (drop δ) in
-noncomputable def HasType.denotation {Γ e A} : (Γ ⊢ e : A) → (〚Γ〛 ⟶ 〚A〛)
+def HasType.denotation {Γ e A} : (Γ ⊢ e : A) → (〚Γ〛 ⟶ 〚A〛)
   | var x A hx => Ctx.lookup Γ x hx
   | dvar x A hx => Ctx.lookup Γ x hx
   | unit_intro => terminal.from 〚Γ〛

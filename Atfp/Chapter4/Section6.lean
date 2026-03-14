@@ -1,12 +1,12 @@
 module
 
-public import Mathlib.CategoryTheory.Monoidal.Cartesian.Basic
+public import Mathlib.Data.Rel
 public import Mathlib.Order.Category.CompleteLat
 public import Mathlib.Order.FixedPoints
 
+import Mathlib.Order.OrderIsoNat
 import Mathlib.Tactic.TautoSet
 
-public import Atfp.Chapter3
 public import Atfp.Chapter4.Section3
 
 @[expose] public section
@@ -36,7 +36,7 @@ structure Change where
   zero_valid : ∀ x, (x, zero x) ∈ V
   zero_update: ∀ x, update ⟨(x, zero x), zero_valid x⟩ = x
 
-notation x " ⨁[" 𝕏 "]" dx => Change.update 𝕏 ⟨(x, dx), by aesop⟩
+notation x " ⨁[" 𝕏 "] " dx => Change.update 𝕏 ⟨(x, dx), by aesop⟩
 notation "𝟬[" 𝕏 "]" => Change.zero 𝕏
 
 open Lean PrettyPrinter Delaborator SubExpr in
@@ -212,7 +212,7 @@ def semifix
 /-! Theorem 4.6.6 -/
 
 theorem semifix_fix
-    (hasc : WF_asc L)
+    [WellFoundedGT L]
     (der : @IsDerivative
       (Change.ofCompleteLat L)
       (Change.ofCompleteLat L)
@@ -248,7 +248,20 @@ theorem semifix_fix
   simp only [h]
   change f.hom.lfp = ⨆ i, f^[i] ⊥
   apply this
-  sorry
+  rw [OmegaCompletePartialOrder.ωScottContinuous_iff_monotone_map_ωSup]
+  refine ⟨f.hom.monotone, fun c => ?_⟩
+  obtain ⟨n, hn⟩ := WellFoundedGT.monotone_chain_condition c
+  apply le_antisymm
+  · have hsup : OmegaCompletePartialOrder.ωSup c = c n := le_antisymm
+      (OmegaCompletePartialOrder.ωSup_le_iff.mpr fun m => by
+        rcases le_or_gt n m with h | h
+        · exact (hn m h).symm ▸ le_rfl
+        · exact c.monotone h.le)
+      (OmegaCompletePartialOrder.le_ωSup c n)
+    rw [hsup]
+    exact OmegaCompletePartialOrder.le_ωSup (c.map ⟨f.hom, f.hom.monotone⟩) n
+  · exact OmegaCompletePartialOrder.ωSup_le_iff.mpr fun m =>
+      f.hom.monotone (OmegaCompletePartialOrder.le_ωSup c m)
 
 end SeminaiveFP
 
@@ -446,7 +459,7 @@ noncomputable def exp (𝕏 𝕐 : Change) : Change where
   X := PartOrd.of (𝕏 ⟶ 𝕐)
   Δ := PartOrd.of ([𝕏.X]ᵈ ⊗ 𝕏.Δ ⟶ 𝕐.Δ)
   V := { (f, df) |
-    ∃ g', (∀ x dx, (hx : (x, dx) ∈ 𝕏.V) → IsExpValid f df g' x dx hx) }
+    ∃ g', ∀ x dx, (hx : (x, dx) ∈ 𝕏.V) → IsExpValid f df g' x dx hx }
   update := fun ⟨(f, df), hv⟩ =>
     let g' := hv.choose
     let hva := hv.choose_spec
@@ -457,9 +470,10 @@ noncomputable def exp (𝕏 𝕐 : Change) : Change where
           (hva x (𝟬[𝕏] x) (𝕏.zero_valid x)).hv₃⟩
       monotone' {x₁ x₂} h := by
         dsimp
-        trans (f.base x₂ ⨁[𝕐]df (x₁, 𝟬[𝕏] x₁))
+        trans -- f.base x₂ ⨁[𝕐] df (x₁, 𝟬[𝕏] x₁)
         · sorry
-        sorry
+        · sorry
+        · sorry
 
     }
     hasDeriv := ⟨g', fun x dx hx => by

@@ -411,31 +411,16 @@ variable {X Y : Type u} [Preorder X] [Preorder Y]
 #check Preorder.le_refl
 #check Preorder.le_trans
 
-def WF_desc (X : Type u) [Preorder X] : Prop :=
-  ¬∃ x : ℕ → X, ∀ n, x n > x (n + 1)
-
-def WF_asc (X : Type u) [Preorder X] : Prop :=
-  ¬∃ x : ℕ → X, ∀ n, x n < x (n + 1)
+#check WellFoundedLT
+#check WellFoundedGT
 
 /-! Theorem 3.10.2 -/
 
-theorem WF.induction
-    (hwf : WF_asc X)
+theorem WF.induction [WellFoundedGT X]
     (P : X → Prop)
     (hP : ∀ x : X, (∀ y > x, P y) → P x) :
-    ∀ x : X, P x := by
-  intro x
-  by_contra hx
-  have build : ∀ x : {x : X // ¬P x}, ∃ y : {y : X // ¬P y}, x < y := by
-    intro ⟨x, hnP⟩
-    by_contra hall
-    refine hnP (hP x fun y hy => ?_)
-    by_contra hnPy
-    exact hall ⟨⟨y, hnPy⟩, hy⟩
-  choose next hnext using build
-  let chain : ℕ → {x : X // ¬P x} := Nat.rec ⟨x, hx⟩ (fun _ => next)
-  have hasc : ∀ n, (chain n).val < (chain (n + 1)).val := fun n => hnext (chain n)
-  exact hwf ⟨fun n => (chain n).val, hasc⟩
+    ∀ x : X, P x :=
+  fun x => wellFounded_gt.induction x fun x ih => hP x fun y hy => ih y hy
 
 variable {F : PolynomialFunctor}
 
@@ -491,9 +476,9 @@ lemma PolynomialFunctor.preserves_monotone (f : X →o Y) : Monotone (〚F〛.ma
 def WF2 (X : Type u) [Preorder X] : Prop :=
   ∀ A : Set X, Inhabited A → ∃ a : A, ∀ b : A, b ≤ a → a ≤ b
 
-theorem iff {X : Type u} [Preorder X] : WF_desc X ↔ WF2 X := by
-  apply Iff.intro
-  · intro wf A ⟨x⟩
+theorem WellFoundedLT.iff_WF2 {X : Type u} [Preorder X] : WellFoundedLT X ↔ WF2 X := by
+  constructor
+  · intro ⟨hwf⟩ A ⟨x⟩
     by_contra h
     replace h : ∀ a : A, ∃ b : A, b < a := by
       intro a
@@ -501,13 +486,31 @@ theorem iff {X : Type u} [Preorder X] : WF_desc X ↔ WF2 X := by
       use b
       have ⟨hb₁, hb₂⟩ := Classical.not_imp.mp hb
       exact lt_of_le_not_ge hb₁ hb₂
-    let build_chain (n : ℕ) : A := n.recOn x (fun _ prev => (h prev).choose)
-    apply wf
-    exact ⟨fun n => (build_chain n).1, fun n => (h (build_chain n)).choose_spec⟩
-  · intro wf ⟨chain, hchain⟩
-    have ⟨⟨min, hmin⟩, hmin_spec⟩ := wf (Set.range chain) ⟨⟨chain 0, Set.mem_range_self 0⟩⟩
+    have : ∀ a, a ∈ A → Acc (· < ·) a → False := by
+      intro a ha hacc
+      induction hacc with
+      | intro a _ ih =>
+        obtain ⟨⟨b, hb_mem⟩, hba⟩ := h ⟨a, ha⟩
+        exact ih b hba hb_mem
+    exact this x x.prop (hwf.apply x)
+  · intro wf
+    constructor
+    constructor
+    intro a
+    by_contra hacc
+    have build : ∀ x : {x : X // ¬Acc (· < ·) x}, ∃ y : {y : X // ¬Acc (· < ·) y}, y < x := by
+      intro ⟨x, hx⟩
+      by_contra hall
+      apply hx
+      exact Acc.intro x fun y hy => by
+        by_contra hny
+        exact hall ⟨⟨y, hny⟩, hy⟩
+    choose next hnext using build
+    let chain : ℕ → {x : X // ¬Acc (· < ·) x} := Nat.rec ⟨a, hacc⟩ (fun _ => next)
+    have hchain_desc : ∀ n, (chain (n + 1)).val < (chain n).val := fun n => hnext (chain n)
+    have ⟨⟨min, hmin⟩, hmin_spec⟩ := wf (Set.range (fun n => (chain n).val)) ⟨⟨a, ⟨0, rfl⟩⟩⟩
     obtain ⟨i, hi⟩ := Set.mem_range.mp hmin
-    have : chain (i + 1) ≤ min := hi ▸ (hchain i).le
-    exact (hchain i).not_ge (hi.symm ▸ hmin_spec ⟨chain (i + 1), Set.mem_range_self _⟩ this)
+    have hle : (chain (i + 1)).val ≤ min := hi ▸ (hchain_desc i).le
+    exact (hchain_desc i).not_ge (hi.symm ▸ hmin_spec ⟨(chain (i + 1)).val, ⟨i + 1, rfl⟩⟩ hle)
 
 end Section10
