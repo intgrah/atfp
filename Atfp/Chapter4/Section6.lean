@@ -78,7 +78,7 @@ section Section2
 
 def IsDerivative {𝕏 𝕐 : Change.{u}}
     (f : 𝕏.X ⟶ 𝕐.X)
-    (f' : ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (f x)) : Prop :=
+    (f' : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ 𝕐.Δ (f x)) : Prop :=
   ∀ x dx, f (x ⨁[𝕏] dx) = f x ⨁[𝕐] f' x dx
 
 namespace Examples
@@ -96,21 +96,24 @@ def f : 𝒫ℕ ⟶ 𝒫ℕ :=
       exact h
   }
 
-def f'₀ : (x : Set ℕ) → Set ℕ → Set ℕ := fun _ dx => dx
+def f'₀ : ∀ _ : 𝒫ℕ, 𝒫ℕ ⟶ 𝒫ℕ := fun _ =>
+  PartOrd.ofHom ⟨fun dx => dx, fun _ _ h => h⟩
 
 example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₀ := by
   intro (x : 𝒫ℕ) (dx : 𝒫ℕ)
   change x ∪ dx ∪ {1, 2} = x ∪ {1, 2} ∪ dx
   tauto_set
 
-def f'₁ : (x : Set ℕ) → Set ℕ → Set ℕ := fun _ dx => dx \ {1}
+def f'₁ : ∀ _ : 𝒫ℕ, 𝒫ℕ ⟶ 𝒫ℕ := fun _ =>
+  PartOrd.ofHom ⟨fun dx => dx \ {1}, fun _ _ h => Set.diff_subset_diff_left h⟩
 
 example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₁ := by
   intro (x : 𝒫ℕ) (dx : 𝒫ℕ)
   change x ∪ dx ∪ {1, 2} = x ∪ {1, 2} ∪ dx \ {1}
   tauto_set
 
-def f'₂ : (x : Set ℕ) → Set ℕ → Set ℕ := fun _ dx => dx \ {2}
+def f'₂ : ∀ _ : 𝒫ℕ, 𝒫ℕ ⟶ 𝒫ℕ := fun _ =>
+  PartOrd.ofHom ⟨fun dx => dx \ {2}, fun _ _ h => Set.diff_subset_diff_left h⟩
 
 example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₂ := by
   intro (x : 𝒫ℕ) (dx : 𝒫ℕ)
@@ -119,7 +122,8 @@ example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₂ := by
   simp only [Set.mem_union, Set.mem_insert_iff, Set.mem_singleton_iff, Set.mem_diff]
   tauto
 
-def f'₃ : (x : Set ℕ) → Set ℕ → Set ℕ := fun _ dx => dx \ {1, 2}
+def f'₃ : ∀ _ : 𝒫ℕ, 𝒫ℕ ⟶ 𝒫ℕ := fun _ =>
+  PartOrd.ofHom ⟨fun dx => dx \ {1, 2}, fun _ _ h => Set.diff_subset_diff_left h⟩
 
 example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₃ := by
   intro (x : 𝒫ℕ) (dx : 𝒫ℕ)
@@ -134,7 +138,7 @@ namespace SeminaiveFP
 
 variable (L : CompleteLat.{u})
   (f : PartOrd.of L ⟶ PartOrd.of L)
-  (f' : PartOrd.of L → PartOrd.of L → PartOrd.of L)
+  (f' : PartOrd.of L → (PartOrd.of L ⟶ PartOrd.of L))
 
 mutual
 
@@ -224,7 +228,7 @@ variable (𝕏 𝕐 : Change)
 @[ext]
 structure Hom where
   base : 𝕏.X ⟶ 𝕐.X
-  hasDeriv : ∃ f' : ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (base x),
+  hasDeriv : ∃ f' : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ 𝕐.Δ (base x),
     IsDerivative base f'
 
 instance : FunLike (Hom 𝕏 𝕐) 𝕏.X 𝕐.X where
@@ -235,12 +239,12 @@ instance : FunLike (Hom 𝕏 𝕐) 𝕏.X 𝕐.X where
 variable {𝕏 𝕐 : Change}
 
 noncomputable def Hom.deriv (h : Hom 𝕏 𝕐) :
-    ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (h.base x) :=
+    ∀ x : 𝕏.X, 𝕏.Δ x ⟶ 𝕐.Δ (h.base x) :=
   h.hasDeriv.choose
 
 def id 𝕏 : Hom 𝕏 𝕏 where
   base := 𝟙 𝕏.X
-  hasDeriv := ⟨fun _ dx => dx, fun _ _ => rfl⟩
+  hasDeriv := ⟨fun _ => 𝟙 _, fun _ _ => rfl⟩
 
 end Section3
 
@@ -252,7 +256,7 @@ instance : LargeCategory Change where
     hasDeriv := by
       replace ⟨f, f', hf⟩ := f
       replace ⟨g, g', hg⟩ := g
-      refine ⟨fun x dx => g' (f x) (f' x dx), ?_⟩
+      refine ⟨fun x => (f' x) ≫ (g' (f x)), ?_⟩
       intro x dx
       calc g (f (x ⨁[𝕏] dx))
         _ = g (f x ⨁[𝕐] f' x dx) := congrArg g (hf x dx)
@@ -273,7 +277,7 @@ def terminal : Change where
 
 def terminal.from (𝕏 : Change) : 𝕏 ⟶ terminal where
   base := PartOrd.terminal.from 𝕏.X
-  hasDeriv := ⟨fun _ _ => ⟨⟩, fun _ _ => rfl⟩
+  hasDeriv := ⟨fun _ => PartOrd.terminal.from _, fun _ _ => rfl⟩
 
 def isTerminal : IsTerminal terminal :=
   IsTerminal.ofUniqueHom terminal.from
@@ -350,12 +354,12 @@ instance : PartialOrder (𝕏 ⟶ 𝕐) :=
     (fun _ _ h => Hom.ext (PartOrd.Hom.ext h))
 
 def exp.update'
-    (f : 𝕏.X ⟶ 𝕐.X) (df : ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (f x))
+    (f : 𝕏.X ⟶ 𝕐.X) (df : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ 𝕐.Δ (f x))
     (x : 𝕏.X) : 𝕐.X :=
   f x ⨁[𝕐] df x (𝟬[𝕏] x)
 
 theorem exp.update'_eq_of_isDerivative
-    {f : 𝕏.X ⟶ 𝕐.X} {f' : ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (f x)}
+    {f : 𝕏.X ⟶ 𝕐.X} {f' : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ 𝕐.Δ (f x)}
     (hf' : IsDerivative f f') (x : 𝕏.X) :
     update' f f' x = f x :=
   calc f x ⨁[𝕐] f' x (𝟬[𝕏] x)
@@ -366,10 +370,10 @@ open exp in
 noncomputable def exp (𝕏 𝕐 : Change) : Change where
   X := PartOrd.of (𝕏 ⟶ 𝕐)
   Δ := fun ⟨f, _⟩ => PartOrd.of
-    { df : ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (f x) //
+    { df : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ 𝕐.Δ (f x) //
       (∀ x dx, f x ⨁[𝕐] df x dx = update' f df (x ⨁[𝕏] dx)) ∧
       Monotone (update' f df) ∧
-      ∃ g' : ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (update' f df x),
+      ∃ g' : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ 𝕐.Δ (update' f df x),
         ∀ x dx, update' f df (x ⨁[𝕏] dx) = update' f df x ⨁[𝕐] g' x dx
     }
   update := fun ⟨f, _⟩ ⟨df, _, hdf⟩ =>
@@ -401,18 +405,18 @@ def terminalCone : LimitCone (Functor.empty Change) where
 
 def fst : 𝕏.prod 𝕐 ⟶ 𝕏 where
   base := PartOrd.fst
-  hasDeriv := ⟨fun _ (dx, _) => dx, fun _ _ => rfl⟩
+  hasDeriv := ⟨fun _ => PartOrd.fst, fun _ _ => rfl⟩
 
 def snd : 𝕏.prod 𝕐 ⟶ 𝕐 where
   base := PartOrd.snd
-  hasDeriv := ⟨fun _ (_, dy) => dy, fun _ _ => rfl⟩
+  hasDeriv := ⟨fun _ => PartOrd.snd, fun _ _ => rfl⟩
 
 def prod_lift (f : 𝕫 ⟶ 𝕏) (g : 𝕫 ⟶ 𝕐) : 𝕫 ⟶ 𝕏.prod 𝕐 where
   base := PartOrd.prod_lift f.base g.base
   hasDeriv := by
     replace ⟨f', hf'⟩ := f.hasDeriv
     replace ⟨g', hg'⟩ := g.hasDeriv
-    refine ⟨fun x dx => (f' x dx, g' x dx), ?_⟩
+    refine ⟨fun x => PartOrd.prod_lift (f' x) (g' x), ?_⟩
     intro x dx
     exact Prod.ext (hf' x dx) (hg' x dx)
 
@@ -447,8 +451,9 @@ noncomputable def expFunctor (𝕏 : Change) : Change ⥤ Change where
     hasDeriv := by
       obtain ⟨f', hf'⟩ := f.hasDeriv
       refine ⟨?_, ?_⟩
-      · intro ⟨g, _⟩ ⟨df, hdf₁, hdf₂⟩
-        refine ⟨fun x dx => f' (g x) (df x dx), ?_, ?_⟩
+      · intro ⟨g, _⟩
+        refine PartOrd.ofHom ⟨fun ⟨df, hdf⟩ =>
+          ⟨fun x => (df x) ≫ (f' (g x)), ?_, ?_⟩, ?_⟩
         · intro x dx
           symm
           calc f.base (g (x ⨁[𝕏] dx)) ⨁[𝕫]
@@ -459,27 +464,26 @@ noncomputable def expFunctor (𝕏 : Change) : Change ⥤ Change where
             _ = f.base (g x ⨁[𝕐] df x dx) := by
                 congr 1
                 symm
-                exact hdf₁ x dx
+                exact hdf.left x dx
             _ = f.base (g x) ⨁[𝕫] f' (g x) (df x dx) :=
                 hf' (g x) (df x dx)
-        · have ⟨hmono_g, g'_g, hg'_g⟩ := hdf₂
-          have updEq : ∀ z, update' (g ≫ f.base)
-              (fun x dx => f' (g x) (df x dx)) z =
+        · have ⟨hmono_g, g'_g, hg'_g⟩ := hdf.right
+          let df' : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ 𝕫.Δ ((g ≫ f.base) x) :=
+            fun x => (df x) ≫ (f' (g x))
+          have updEq : ∀ z, update' (g ≫ f.base) df' z =
               f.base (update' g df z) := by
             intro z
             symm
             exact hf' (g z) (df z (𝟬[𝕏] z))
-          have hmono : Monotone (update' (g ≫ f.base)
-              (fun x dx => f' (g x) (df x dx))) := by
+          have hmono : Monotone (update' (g ≫ f.base) df') := by
             intro _ _ h
             rw [updEq, updEq]
             exact f.base.hom.monotone (hmono_g h)
           refine ⟨hmono, ?_⟩
-          have : update' (g ≫ f.base)
-              (fun x dx => f' (g x) (df x dx))
+          have : update' (g ≫ f.base) df'
               = ⇑f.base ∘ update' g df := funext updEq
           rw [this]
-          refine ⟨fun x dx => f' (update' g df x) (g'_g x dx), ?_⟩
+          refine ⟨fun x => (g'_g x) ≫ (f' (update' g df x)), ?_⟩
           intro x dx
           calc f.base (update' g df (x ⨁[𝕏] dx))
             _ = f.base (update' g df x ⨁[𝕐] g'_g x dx) :=
@@ -487,8 +491,10 @@ noncomputable def expFunctor (𝕏 : Change) : Change ⥤ Change where
             _ = f.base (update' g df x) ⨁[𝕫]
                 f' (update' g df x) (g'_g x dx) :=
                 hf' (update' g df x) (g'_g x dx)
-      · intro ⟨g, _⟩ ⟨df, hdf⟩
-        obtain ⟨_, hmono, _⟩ := hdf
+        · intro ⟨df₁, _⟩ ⟨df₂, _⟩ h x dx
+          change (df₁ x ≫ f' (g x)) dx ≤ (df₂ x ≫ f' (g x)) dx
+          exact (f' (g x)).hom.monotone (h x dx)
+      · intro ⟨g, _⟩ ⟨df, _, hmono, _⟩
         apply Hom.ext
         ext x
         exact hf' (g x) (df x (𝟬[𝕏] x))
@@ -501,8 +507,14 @@ def ev : 𝕏.prod (exp 𝕏 𝕐) ⟶ 𝕐 where
       (f₁.base.hom.monotone hx).trans (hf x₂)
   }
   hasDeriv := by
-    refine ⟨fun (x, ⟨f, _⟩) (dx, ⟨df, hdf⟩) => df x dx, ?_⟩
-    intro (x, ⟨f, _⟩) (dx, ⟨df, hev, hmono, _⟩)
+    refine ⟨?_, ?_⟩
+    · intro (x, ⟨f, _⟩)
+      refine PartOrd.ofHom ⟨fun ⟨dx, ⟨df, _, _, _⟩⟩ => df x dx, ?_⟩
+      intro ⟨dx₁, ⟨df₁, _, _, _⟩⟩ ⟨dx₂, ⟨df₂, _, _, _⟩⟩ ⟨hdx, hdf⟩
+      calc (df₁ x) dx₁
+        _ ≤ (df₁ x) dx₂ := (df₁ x).hom.monotone hdx
+        _ ≤ (df₂ x) dx₂ := hdf x dx₂
+    intro (x, ⟨f, _⟩) ⟨dx, ⟨df, hev, hmono, _⟩⟩
     change exp.update' f df (x ⨁[𝕏] dx) = f x ⨁[𝕐] df x dx
     symm
     exact hev x dx
@@ -515,47 +527,42 @@ def coev : 𝕐 ⟶ exp 𝕏 (𝕏.prod 𝕐) where
         monotone' _ _ hx := ⟨hx, le_rfl⟩
       }
       hasDeriv := by
-        refine ⟨fun x dx => (dx, 𝟬[𝕐] y), ?_⟩
+        refine ⟨fun x => PartOrd.ofHom ⟨fun dx => (dx, 𝟬[𝕐] y),
+          fun _ _ h => Prod.mk_le_mk.mpr ⟨h, le_rfl⟩⟩, ?_⟩
         intro _ _
         exact Prod.ext rfl (𝕐.zero_update y).symm
     }
     monotone' _ _ hy x := ⟨le_rfl, hy⟩
   }
   hasDeriv := by
-    refine ⟨fun y dy => ?_, ?_⟩
-    · let f₀ : 𝕏.X ⟶ (𝕏.prod 𝕐).X :=
-        PartOrd.ofHom ⟨fun x => ((x, y) : (𝕏.prod 𝕐).X),
-          fun _ _ h => ⟨h, le_refl _⟩⟩
-      let df₀ : ∀ x : 𝕏.X, 𝕏.Δ x → (𝕏.prod 𝕐).Δ (f₀ x) :=
-        fun _ dx => (dx, dy)
-      have hmono : Monotone (exp.update' f₀ df₀) := by
-        intro x₁ x₂ h
-        change (x₁ ⨁[𝕏] 𝟬[𝕏] x₁, y ⨁[𝕐] dy) ≤
-          (x₂ ⨁[𝕏] 𝟬[𝕏] x₂, y ⨁[𝕐] dy)
-        rw [𝕏.zero_update, 𝕏.zero_update]
-        exact ⟨h, le_refl _⟩
-      let coevUpd : 𝕏 ⟶ 𝕏.prod 𝕐 := {
-        base := PartOrd.ofHom ⟨fun x => ((x, y ⨁[𝕐] dy) :
-          (𝕏.prod 𝕐).X), fun _ _ h => ⟨h, le_refl _⟩⟩
-        hasDeriv := ⟨fun x dx => ((dx, 𝟬[𝕐] (y ⨁[𝕐] dy)) :
-          (𝕏.prod 𝕐).Δ (x, y ⨁[𝕐] dy)),
-          fun _ _ => Prod.ext rfl (𝕐.zero_update _).symm⟩
-      }
-      have updEq : ∀ x, exp.update' f₀ df₀ x = coevUpd.base x := by
-        intro x
-        change (x ⨁[𝕏] 𝟬[𝕏] x, y ⨁[𝕐] dy) = (x, y ⨁[𝕐] dy)
-        exact Prod.ext (𝕏.zero_update _) rfl
-      refine ⟨df₀, ?_, hmono, ?_⟩
-      · intro x dx
-        symm
-        exact Prod.ext (𝕏.zero_update _) rfl
-      · have : exp.update' f₀ df₀ = ⇑coevUpd.base := funext updEq
-        rw [this]
-        exact coevUpd.hasDeriv
+    refine ⟨fun y => ?_, ?_⟩
+    · refine PartOrd.ofHom ⟨fun dy => ?_, ?_⟩
+      · set f : 𝕏.X ⟶ (𝕏.prod 𝕐).X :=
+          PartOrd.ofHom ⟨fun x => (x, y), fun _ _ hx => ⟨hx, le_rfl⟩⟩
+        set df : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ (𝕏.prod 𝕐).Δ (f x) :=
+          fun x => PartOrd.ofHom ⟨fun dx => (dx, dy),
+            fun _ _ h => Prod.mk_le_mk.mpr ⟨h, le_rfl⟩⟩
+        have upd_eq : exp.update' f df = fun x => (x, y ⨁[𝕐] dy) := by
+          ext x
+          change (x ⨁[𝕏] 𝟬[𝕏] x, y ⨁[𝕐] dy) = (x, y ⨁[𝕐] dy)
+          rw [𝕏.zero_update]
+        refine ⟨df, ?_, ?_⟩
+        · intro x dx
+          change (x ⨁[𝕏] dx, y ⨁[𝕐] dy) =
+            (x ⨁[𝕏] dx ⨁[𝕏] 𝟬[𝕏] (x ⨁[𝕏] dx), y ⨁[𝕐] dy)
+          rw [𝕏.zero_update]
+        · rw [upd_eq]
+          refine ⟨fun _ _ h => Prod.mk_le_mk.mpr ⟨h, le_rfl⟩, ?_⟩
+          exact ⟨fun x => PartOrd.ofHom ⟨fun dx => (dx, 𝟬[𝕐] (y ⨁[𝕐] dy)),
+            fun _ _ h => Prod.mk_le_mk.mpr ⟨h, le_rfl⟩⟩,
+            fun x dx => Prod.ext rfl (𝕐.zero_update (y ⨁[𝕐] dy)).symm⟩
+      · intro _ _ h _ _
+        exact Prod.mk_le_mk.mpr ⟨le_rfl, h⟩
     · intro y dy
       apply Hom.ext
-      ext x
-      exact Prod.ext (𝕏.zero_update _).symm rfl
+      apply PartOrd.ext
+      intro x
+      exact Prod.ext (𝕏.zero_update x).symm rfl
 
 noncomputable def tensorProductAdjunction (𝕏 : Change) :
     tensorLeft 𝕏 ⊣ expFunctor 𝕏 :=
@@ -587,15 +594,16 @@ def comonad : Comonad Change where
   obj := disc
   map f := {
     base := PartOrd.disc.comonad.map f.base
-    hasDeriv := ⟨fun _ _ => ⟨⟩, fun _ _ => rfl⟩
+    hasDeriv := ⟨fun _ => PartOrd.ofHom ⟨fun _ => ⟨⟩, fun _ _ _ => le_rfl⟩, fun _ _ => rfl⟩
   }
   ε.app 𝕏 := {
     base := PartOrd.disc.comonad.ε.app 𝕏.X
-    hasDeriv := ⟨fun x _ => 𝟬[𝕏] x, fun x _ => (𝕏.zero_update x).symm⟩
+    hasDeriv := ⟨fun x => PartOrd.ofHom ⟨fun _ => 𝟬[𝕏] x, fun _ _ _ => le_rfl⟩,
+      fun x _ => (𝕏.zero_update x).symm⟩
   }
   δ.app 𝕏 := {
     base := PartOrd.disc.comonad.δ.app 𝕏.X
-    hasDeriv := ⟨fun _ _ => ⟨⟩, fun _ _ => rfl⟩
+    hasDeriv := ⟨fun _ => PartOrd.ofHom ⟨fun _ => ⟨⟩, fun _ _ _ => le_rfl⟩, fun _ _ => rfl⟩
   }
 
 end disc
@@ -616,7 +624,8 @@ def U.map {L M : SemilatSupCat} (f : SupBotHom L M) : U.obj L ⟶ U.obj M where
   base := PartOrd.ofHom
     ⟨f, fun a b hab => OrderHomClass.mono f hab⟩
   hasDeriv := by
-    refine ⟨fun _ (dx : L) => (f dx : M), ?_⟩
+    refine ⟨fun _ => PartOrd.ofHom ⟨fun (dx : L) => (f dx : M),
+      fun _ _ h => OrderHomClass.mono f h⟩, ?_⟩
     intro (x : L) (dx : L)
     change (f (x ⊔ dx) : M) = f x ⊔ f dx
     exact map_sup f x dx
@@ -628,7 +637,8 @@ def U : SemilatSupCat ⥤ Change where
 def bot {L : SemilatSupCat} : terminal ⟶ U.obj L where
   base := PartOrd.ofHom ⟨fun ⟨⟩ => (⊥ : L), fun _ _ _ => le_rfl⟩
   hasDeriv :=
-    ⟨fun ⟨⟩ ⟨⟩ => (⊥ : L), fun ⟨⟩ ⟨⟩ => (bot_sup_eq (⊥ : L)).symm⟩
+    ⟨fun ⟨⟩ => PartOrd.ofHom ⟨fun ⟨⟩ => (⊥ : L), fun _ _ _ => le_rfl⟩,
+      fun ⟨⟩ ⟨⟩ => (bot_sup_eq (⊥ : L)).symm⟩
 
 def sup {L : SemilatSupCat} : (U.obj L).prod (U.obj L) ⟶ U.obj L where
   base := PartOrd.ofHom {
@@ -637,7 +647,8 @@ def sup {L : SemilatSupCat} : (U.obj L).prod (U.obj L) ⟶ U.obj L where
       sup_le (le_sup_of_le_left hl) (le_sup_of_le_right hm)
   }
   hasDeriv := by
-    refine ⟨fun _ (dl₁, dl₂) => (dl₁ ⊔ dl₂ : L), ?_⟩
+    refine ⟨fun _ => PartOrd.ofHom ⟨fun (dl₁, dl₂) => (dl₁ ⊔ dl₂ : L),
+      fun _ _ ⟨h₁, h₂⟩ => sup_le_sup h₁ h₂⟩, ?_⟩
     intro (l₁, l₂) (dl₁, dl₂)
     change L at l₁ l₂ dl₁ dl₂
     exact sup_sup_sup_comm l₁ dl₁ l₂ dl₂
