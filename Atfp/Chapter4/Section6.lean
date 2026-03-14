@@ -34,8 +34,8 @@ structure Change where
   zero : ∀ x, Δ x
   zero_update: ∀ x, update x (zero x) = x
 
-notation:65 x " ⨁[" 𝕏 "] " dx:66 => Change.update 𝕏 x dx
-notation "𝟬[" 𝕏 "]" => Change.zero 𝕏
+notation:65 x " ⨁ " dx:66 => Change.update _ x dx
+notation "𝟬" => Change.zero _
 
 open Lean PrettyPrinter Delaborator SubExpr in
 @[delab app.Change.update]
@@ -79,7 +79,7 @@ section Section2
 def IsDerivative {𝕏 𝕐 : Change.{u}}
     (f : 𝕏.X ⟶ 𝕐.X)
     (f' : ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (f x)) : Prop :=
-  ∀ x dx, f (x ⨁[𝕏] dx) = f x ⨁[𝕐] f' x dx
+  ∀ x dx, f (x ⨁ dx) = f x ⨁ f' x dx
 
 namespace Examples
 
@@ -254,9 +254,9 @@ instance : LargeCategory Change where
       replace ⟨g, g', hg⟩ := g
       refine ⟨fun x dx => g' (f x) (f' x dx), ?_⟩
       intro x dx
-      calc g (f (x ⨁[𝕏] dx))
-        _ = g (f x ⨁[𝕐] f' x dx) := congrArg g (hf x dx)
-        _ = g (f x) ⨁[𝕫] g' (f x) (f' x dx) := hg (f x) (f' x dx)
+      calc g (f (x ⨁ dx))
+        _ = g (f x ⨁ f' x dx) := congrArg g (hf x dx)
+        _ = g (f x) ⨁ g' (f x) (f' x dx) := hg (f x) (f' x dx)
   }
 
 section Section4
@@ -305,10 +305,10 @@ def prod (𝕏 𝕐 : Change) : Change where
   X := 𝕏.X ⊗ 𝕐.X
   Δ := fun (x, y) => 𝕏.Δ x ⊗ 𝕐.Δ y
   update := fun (x, y) (dx, dy) =>
-    (x ⨁[𝕏] dx, y ⨁[𝕐] dy)
+    (x ⨁ dx, y ⨁ dy)
   update_monotone := fun (x, y) (dx, dy) =>
     ⟨𝕏.update_monotone x dx, 𝕐.update_monotone y dy⟩
-  zero := fun (x, y) => (𝟬[𝕏] x, 𝟬[𝕐] y)
+  zero := fun (x, y) => (𝟬 x, 𝟬 y)
   zero_update := fun (x, y) =>
     Prod.ext (𝕏.zero_update x) (𝕐.zero_update y)
 
@@ -324,16 +324,16 @@ def coprod (𝕏 𝕐 : Change) : Change where
     | .inl x => 𝕏.Δ x
     | .inr y => 𝕐.Δ y
   update
-    | .inl x, dx => .inl (x ⨁[𝕏] dx)
-    | .inr y, dy => .inr (y ⨁[𝕐] dy)
+    | .inl x, dx => .inl (x ⨁ dx)
+    | .inr y, dy => .inr (y ⨁ dy)
   update_monotone
     | .inl x, dx =>
       Sum.inl_le_inl_iff.mpr (𝕏.update_monotone x dx)
     | .inr y, dy =>
       Sum.inr_le_inr_iff.mpr (𝕐.update_monotone y dy)
   zero
-    | .inl x => 𝟬[𝕏] x
-    | .inr y => 𝟬[𝕐] y
+    | .inl x => 𝟬 x
+    | .inr y => 𝟬 y
   zero_update
     | .inl x => congrArg Sum.inl (𝕏.zero_update x)
     | .inr y => congrArg Sum.inr (𝕐.zero_update y)
@@ -347,14 +347,14 @@ instance {𝕏 𝕐 : Change} : PartialOrder (𝕏 ⟶ 𝕐) :=
     (fun f => f.base.hom)
     (fun _ _ h => Hom.ext (PartOrd.Hom.ext h))
 
-def exp.updateBase {𝕏 𝕐 : Change}
+abbrev exp.updateBase {𝕏 𝕐 : Change}
     (f : 𝕏.X ⟶ 𝕐.X) (df : ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (f x))
     (x : 𝕏.X) : 𝕐.X :=
-  f x ⨁[𝕐] df x (𝟬[𝕏] x)
+  f x ⨁ df x (𝟬 x)
 
 def exp.updateBaseHom {𝕏 𝕐 : Change}
     (f : 𝕏.X ⟶ 𝕐.X) (df : ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (f x))
-    (hmono : Monotone (updateBase f df)) : 𝕏.X ⟶ 𝕐.X :=
+    (hmono : Monotone (fun x => f x ⨁ df x (𝟬 x))) : 𝕏.X ⟶ 𝕐.X :=
   PartOrd.ofHom ⟨updateBase f df, hmono⟩
 
 theorem exp.updateBase_eq_of_isDerivative {𝕏 𝕐 : Change}
@@ -362,7 +362,7 @@ theorem exp.updateBase_eq_of_isDerivative {𝕏 𝕐 : Change}
     (hf' : IsDerivative f f') (x : 𝕏.X) :
     updateBase f f' x = f x :=
   calc updateBase f f' x
-    _ = f (x ⨁[𝕏] 𝟬[𝕏] x) := (hf' x (𝟬[𝕏] x)).symm
+    _ = f (x ⨁ 𝟬 x) := (hf' x (𝟬 x)).symm
     _ = f x := by rw [𝕏.zero_update]
 
 open exp in
@@ -370,7 +370,7 @@ noncomputable def exp (𝕏 𝕐 : Change) : Change where
   X := PartOrd.of (𝕏 ⟶ 𝕐)
   Δ := fun ⟨f, _⟩ => PartOrd.of
     { df : ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (f x) //
-      (∀ x dx, updateBase f df (x ⨁[𝕏] dx) = f x ⨁[𝕐] df x dx)
+      (∀ x dx, updateBase f df (x ⨁ dx) = f x ⨁ df x dx)
       ∧ ∃ hmono : Monotone (updateBase f df),
         ∃ g', IsDerivative (updateBaseHom f df hmono) g' }
   update := fun ⟨f, _⟩ ⟨df, _, hdf⟩ =>
@@ -452,15 +452,15 @@ noncomputable def expFunctor (𝕏 : Change) : Change ⥤ Change where
       · intro ⟨g, _⟩ ⟨df, hdf₁, hdf₂⟩
         refine ⟨fun x dx => f' (g x) (df x dx), ?_, ?_⟩
         · intro x dx
-          calc f.base (g (x ⨁[𝕏] dx)) ⨁[𝕫]
-                f' (g (x ⨁[𝕏] dx)) (df (x ⨁[𝕏] dx) (𝟬[𝕏] (x ⨁[𝕏] dx)))
-            _ = f.base (g (x ⨁[𝕏] dx) ⨁[𝕐]
-                  df (x ⨁[𝕏] dx) (𝟬[𝕏] (x ⨁[𝕏] dx))) := by
+          calc f.base (g (x ⨁ dx)) ⨁
+                f' (g (x ⨁ dx)) (df (x ⨁ dx) (𝟬 (x ⨁ dx)))
+            _ = f.base (g (x ⨁ dx) ⨁
+                  df (x ⨁ dx) (𝟬 (x ⨁ dx))) := by
                 rw [hf']
-            _ = f.base (g x ⨁[𝕐] df x dx) := by
+            _ = f.base (g x ⨁ df x dx) := by
                 congr 1
                 exact hdf₁ x dx
-            _ = f.base (g x) ⨁[𝕫] f' (g x) (df x dx) :=
+            _ = f.base (g x) ⨁ f' (g x) (df x dx) :=
                 hf' (g x) (df x dx)
         · have ⟨hmono_g, g'_g, hg'_g⟩ := hdf₂
           have updEq : ∀ z, updateBase (g ≫ f.base)
@@ -468,7 +468,7 @@ noncomputable def expFunctor (𝕏 : Change) : Change ⥤ Change where
               f.base (updateBase g df z) := by
             intro z
             symm
-            exact hf' (g z) (df z (𝟬[𝕏] z))
+            exact hf' (g z) (df z (𝟬 z))
           have hmono : Monotone (updateBase (g ≫ f.base)
               (fun x dx => f' (g x) (df x dx))) := by
             intro _ _ h
@@ -483,10 +483,10 @@ noncomputable def expFunctor (𝕏 : Change) : Change ⥤ Change where
           rw [hbase]
           refine ⟨fun x dx => f' (updateBaseHom g df hmono_g x) (g'_g x dx), ?_⟩
           intro x dx
-          calc f.base (updateBaseHom g df hmono_g (x ⨁[𝕏] dx))
-            _ = f.base (updateBaseHom g df hmono_g x ⨁[𝕐] g'_g x dx) :=
+          calc f.base (updateBaseHom g df hmono_g (x ⨁ dx))
+            _ = f.base (updateBaseHom g df hmono_g x ⨁ g'_g x dx) :=
                 congrArg f.base (hg'_g x dx)
-            _ = f.base (updateBaseHom g df hmono_g x) ⨁[𝕫]
+            _ = f.base (updateBaseHom g df hmono_g x) ⨁
                 f' (updateBaseHom g df hmono_g x) (g'_g x dx) :=
                 hf' (updateBaseHom g df hmono_g x) (g'_g x dx)
       · intro ⟨g, _⟩ ⟨df, hdf⟩
@@ -495,7 +495,7 @@ noncomputable def expFunctor (𝕏 : Change) : Change ⥤ Change where
         obtain ⟨_, hmono, _⟩ := hdf
         change (updateBaseHom g df hmono ≫ f.base) x =
           updateBase (g ≫ f.base) (fun x dx => f' (g x) (df x dx)) x
-        exact hf' (g x) (df x (𝟬[𝕏] x))
+        exact hf' (g x) (df x (𝟬 x))
   }
 
 noncomputable def ev {𝕏 𝕐 : Change} :
@@ -508,7 +508,7 @@ noncomputable def ev {𝕏 𝕐 : Change} :
   hasDeriv := by
     refine ⟨fun (x, ⟨f, _⟩) (dx, ⟨df, hdf⟩) => df x dx, ?_⟩
     intro (x, ⟨f, _⟩) (dx, ⟨df, hev, hmono, _⟩)
-    change exp.updateBase f df (x ⨁[𝕏] dx) = f x ⨁[𝕐] df x dx
+    change exp.updateBase f df (x ⨁ dx) = f x ⨁ df x dx
     exact hev x dx
 
 noncomputable def coev {𝕏 𝕐 : Change} :
@@ -520,7 +520,7 @@ noncomputable def coev {𝕏 𝕐 : Change} :
         monotone' _ _ hx := ⟨hx, le_rfl⟩
       }
       hasDeriv := by
-        refine ⟨fun x dx => (dx, 𝟬[𝕐] y), ?_⟩
+        refine ⟨fun x dx => (dx, 𝟬 y), ?_⟩
         intro _ _
         exact Prod.ext rfl (𝕐.zero_update y).symm
     }
@@ -535,21 +535,21 @@ noncomputable def coev {𝕏 𝕐 : Change} :
         fun _ dx => (dx, dy)
       have hmono : Monotone (exp.updateBase f₀ df₀) := by
         intro x₁ x₂ h
-        change (x₁ ⨁[𝕏] 𝟬[𝕏] x₁, y ⨁[𝕐] dy) ≤
-          (x₂ ⨁[𝕏] 𝟬[𝕏] x₂, y ⨁[𝕐] dy)
+        change (x₁ ⨁ 𝟬 x₁, y ⨁ dy) ≤
+          (x₂ ⨁ 𝟬 x₂, y ⨁ dy)
         rw [𝕏.zero_update, 𝕏.zero_update]
         exact ⟨h, le_refl _⟩
       let coevUpd : 𝕏 ⟶ 𝕏.prod 𝕐 := {
-        base := PartOrd.ofHom ⟨fun x => ((x, y ⨁[𝕐] dy) :
+        base := PartOrd.ofHom ⟨fun x => ((x, y ⨁ dy) :
           (𝕏.prod 𝕐).X), fun _ _ h => ⟨h, le_refl _⟩⟩
-        hasDeriv := ⟨fun x dx => ((dx, 𝟬[𝕐] (y ⨁[𝕐] dy)) :
-          (𝕏.prod 𝕐).Δ (x, y ⨁[𝕐] dy)),
+        hasDeriv := ⟨fun x dx => ((dx, 𝟬 (y ⨁ dy)) :
+          (𝕏.prod 𝕐).Δ (x, y ⨁ dy)),
           fun _ _ => Prod.ext rfl (𝕐.zero_update _).symm⟩
       }
       have hbase : exp.updateBaseHom _ _ hmono = coevUpd.base := by
         apply PartOrd.ext
         intro x
-        change (x ⨁[𝕏] 𝟬[𝕏] x, y ⨁[𝕐] dy) = (x, y ⨁[𝕐] dy)
+        change (x ⨁ 𝟬 x, y ⨁ dy) = (x, y ⨁ dy)
         exact Prod.ext (𝕏.zero_update _) rfl
       refine ⟨df₀, ?_, hmono, hbase.symm ▸ coevUpd.hasDeriv⟩
       intro x dx
@@ -594,7 +594,7 @@ def comonad : Comonad Change where
   }
   ε.app 𝕏 := {
     base := PartOrd.disc.comonad.ε.app 𝕏.X
-    hasDeriv := ⟨fun x _ => 𝟬[𝕏] x, fun x _ => (𝕏.zero_update x).symm⟩
+    hasDeriv := ⟨fun (x : 𝕏.X) _ => 𝟬 x, fun x _ => (𝕏.zero_update x).symm⟩
   }
   δ.app 𝕏 := {
     base := PartOrd.disc.comonad.δ.app 𝕏.X
