@@ -13,11 +13,11 @@ public import Atfp.Chapter4.Section4.Datafun
 
 @[expose] public section
 
+namespace Datafun
+
 open CategoryTheory MonoidalCategory
 
 universe u
-
-namespace Datafun
 
 open PartOrd
 
@@ -35,7 +35,7 @@ set_option hygiene false in
 notation "〚" A "〛" => Ty.denotation A
 
 def Ty.denotation : Ty.{u} → PartOrd.{u}
-  | 1 => PartOrd.terminal
+  | 1 => 𝟙_ PartOrd
   | prod A B => 〚A〛 ⊗ 〚B〛
   | arr A B => 〚A〛.exp 〚B〛
   | coprod A B => 〚A〛.coprod 〚B〛
@@ -46,16 +46,16 @@ lemma FinTy.toTy_denotation {T : FinTy} : 〚T〛 = 〚T.toTy〛 := by
   induction T with
   | unit => rfl
   | prod T₁ T₂ ihT₁ ihT₂ =>
-    dsimp [FinTy.denotation]
+    change 〚T₁〛 ⊗ 〚T₂〛 = _
     rw [ihT₁, ihT₂]
     rfl
   | coprod T₁ T₂ ihT₁ ihT₂ =>
-    dsimp [FinTy.denotation]
+    change 〚T₁〛.coprod 〚T₂〛 = _
     rw [ihT₁, ihT₂]
     rfl
   | powerset T => rfl
   | discrete T ihT =>
-    dsimp [FinTy.denotation]
+    change [〚T〛]ᵈ = _
     rw [ihT]
     rfl
 
@@ -124,7 +124,7 @@ def LatTy.comprehension {A : PartOrd} {X : FinTy} :
     prod_lift (L₁.comprehension f₁) (L₂.comprehension f₂)
   | .powerset T, f =>
     PartOrd.ofHom {
-      toFun | (a, (s : Set 〚X〛)) => ⋃ x ∈ s, f (a, x)
+      toFun := fun (a, (s : Set 〚X〛)) => ⋃ x ∈ s, f (a, x)
       monotone' := by
         intro (a₁, (s₁ : Set 〚X〛)) (a₂, (s₂ : Set 〚X〛)) ⟨ha, hs⟩
         apply Set.iUnion₂_subset
@@ -147,18 +147,6 @@ instance LatTy.instFinite : ∀ L : LatTy, Finite 〚L〛
   | unit => Finite.of_fintype PUnit
   | prod L₁ L₂ => @Finite.instProd 〚L₁〛 〚L₂〛 L₁.instFinite L₂.instFinite
   | powerset T => @Set.instFinite 〚T〛 T.instFinite
-
-def FinTy.card : FinTy → ℕ
-  | unit => 1
-  | prod T₁ T₂ => T₁.card * T₂.card
-  | coprod T₁ T₂ => T₁.card + T₂.card
-  | powerset T => 2 ^ T.card
-  | discrete T => T.card
-
-def LatTy.card : LatTy → ℕ
-  | unit => 1
-  | prod L₁ L₂ => L₁.card * L₂.card
-  | powerset T => 2 ^ T.card
 
 def LatTy.fix {A : PartOrd} {L : LatTy}
     (f : [A]ᵈ ⊗ 〚L〛 ⟶ 〚L〛) :
@@ -255,7 +243,7 @@ def HasType.denotation {Γ e A} : (Γ ⊢ e : A) → (〚Γ〛 ⟶ 〚A〛)
   | prod_intro e₁ e₂ A₁ A₂ he₁ he₂ =>
     let f := 〚show Γ ⊢ e₁ : A₁ from he₁〛
     let g := 〚show Γ ⊢ e₂ : A₂ from he₂〛
-    prod_lift f 〚he₂〛
+    prod_lift f g
   | prod_elim₁ e A₁ A₂ he =>
     〚show Γ ⊢ e : A₁.prod A₂ from he〛 ≫ fst
   | prod_elim₂ e A₁ A₂ he =>

@@ -73,6 +73,18 @@ def LatTy.toTy : LatTy → Ty
   | .prod L₁ L₂ => .prod L₁.toTy L₂.toTy
   | .powerset T => .powerset T
 
+def FinTy.card : FinTy → Nat
+  | 1 => 1
+  | prod T₁ T₂ => T₁.card * T₂.card
+  | coprod T₁ T₂ => T₁.card + T₂.card
+  | powerset T => 2 ^ T.card
+  | discrete T => T.card
+
+def LatTy.card : LatTy → Nat
+  | .unit => 1
+  | .prod L₁ L₂ => L₁.card * L₂.card
+  | .powerset T => 2 ^ T.card
+
 scoped instance : Coe LatTy Ty := ⟨LatTy.toTy⟩
 
 scoped notation "π₁" => Tm.fst

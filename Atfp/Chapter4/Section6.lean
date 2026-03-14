@@ -644,6 +644,8 @@ def comonad : Comonad Change where
     hasDeriv := ⟨fun _ => PartOrd.terminal.from _, fun _ _ => rfl⟩
   }
 
+notation "[" f "]ᵈ" => disc.comonad.map f
+
 def iso_terminal : [terminal]ᵈ ≅ terminal where
   hom := {
     base := PartOrd.disc.iso_terminal.hom
