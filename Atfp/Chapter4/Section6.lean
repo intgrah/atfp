@@ -342,17 +342,19 @@ end Section6
 
 section Section7
 
-instance {𝕏 𝕐 : Change} : PartialOrder (𝕏 ⟶ 𝕐) :=
+variable {𝕏 𝕐 𝕫 : Change}
+
+instance : PartialOrder (𝕏 ⟶ 𝕐) :=
   PartialOrder.lift
     (fun f => f.base.hom)
     (fun _ _ h => Hom.ext (PartOrd.Hom.ext h))
 
-def exp.update' {𝕏 𝕐 : Change}
+def exp.update'
     (f : 𝕏.X ⟶ 𝕐.X) (df : ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (f x))
     (x : 𝕏.X) : 𝕐.X :=
   f x ⨁[𝕐] df x (𝟬[𝕏] x)
 
-theorem exp.update'_eq_of_isDerivative {𝕏 𝕐 : Change}
+theorem exp.update'_eq_of_isDerivative
     {f : 𝕏.X ⟶ 𝕐.X} {f' : ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (f x)}
     (hf' : IsDerivative f f') (x : 𝕏.X) :
     update' f f' x = f x :=
@@ -365,15 +367,15 @@ noncomputable def exp (𝕏 𝕐 : Change) : Change where
   X := PartOrd.of (𝕏 ⟶ 𝕐)
   Δ := fun ⟨f, _⟩ => PartOrd.of
     { df : ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (f x) //
-      (∀ x dx, update' f df (x ⨁[𝕏] dx) = f x ⨁[𝕐] df x dx)
-      ∧ Monotone (update' f df)
-      ∧ ∃ g' : ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (update' f df x),
+      (∀ x dx, f x ⨁[𝕐] df x dx = update' f df (x ⨁[𝕏] dx)) ∧
+      Monotone (update' f df) ∧
+      ∃ g' : ∀ x : 𝕏.X, 𝕏.Δ x → 𝕐.Δ (update' f df x),
         ∀ x dx, update' f df (x ⨁[𝕏] dx) = update' f df x ⨁[𝕐] g' x dx
     }
   update := fun ⟨f, _⟩ ⟨df, _, hdf⟩ =>
     ⟨PartOrd.ofHom ⟨update' f df, hdf.left⟩, hdf.right⟩
   update_monotone := by
-    intro ⟨f, _⟩ ⟨df, _, hmono, _⟩ x
+    intro ⟨f, _⟩ ⟨df, _, _, _⟩ x
     exact 𝕐.update_monotone (f x) _
   zero := by
     intro ⟨f, hf⟩
@@ -397,16 +399,15 @@ def terminalCone : LimitCone (Functor.empty Change) where
   cone := asEmptyCone terminal
   isLimit := isTerminal
 
-def fst {𝕏 𝕐 : Change} : 𝕏.prod 𝕐 ⟶ 𝕏 where
+def fst : 𝕏.prod 𝕐 ⟶ 𝕏 where
   base := PartOrd.fst
   hasDeriv := ⟨fun _ (dx, _) => dx, fun _ _ => rfl⟩
 
-def snd {𝕏 𝕐 : Change} : 𝕏.prod 𝕐 ⟶ 𝕐 where
+def snd : 𝕏.prod 𝕐 ⟶ 𝕐 where
   base := PartOrd.snd
   hasDeriv := ⟨fun _ (_, dy) => dy, fun _ _ => rfl⟩
 
-def prod_lift {𝕏 𝕐 𝕫 : Change} (f : 𝕫 ⟶ 𝕏) (g : 𝕫 ⟶ 𝕐) :
-    𝕫 ⟶ 𝕏.prod 𝕐 where
+def prod_lift (f : 𝕫 ⟶ 𝕏) (g : 𝕫 ⟶ 𝕐) : 𝕫 ⟶ 𝕏.prod 𝕐 where
   base := PartOrd.prod_lift f.base g.base
   hasDeriv := by
     replace ⟨f', hf'⟩ := f.hasDeriv
@@ -415,8 +416,7 @@ def prod_lift {𝕏 𝕐 𝕫 : Change} (f : 𝕫 ⟶ 𝕏) (g : 𝕫 ⟶ 𝕐) 
     intro x dx
     exact Prod.ext (hf' x dx) (hg' x dx)
 
-def prod_isLimit {𝕏 𝕐 : Change} :
-    IsLimit (BinaryFan.mk (P := 𝕏.prod 𝕐) fst snd) :=
+def prod_isLimit : IsLimit (BinaryFan.mk (P := 𝕏.prod 𝕐) fst snd) :=
   BinaryFan.isLimitMk
     (fun s => prod_lift s.fst s.snd)
     (fun _ => rfl)
@@ -450,6 +450,7 @@ noncomputable def expFunctor (𝕏 : Change) : Change ⥤ Change where
       · intro ⟨g, _⟩ ⟨df, hdf₁, hdf₂⟩
         refine ⟨fun x dx => f' (g x) (df x dx), ?_, ?_⟩
         · intro x dx
+          symm
           calc f.base (g (x ⨁[𝕏] dx)) ⨁[𝕫]
                 f' (g (x ⨁[𝕏] dx)) (df (x ⨁[𝕏] dx) (𝟬[𝕏] (x ⨁[𝕏] dx)))
             _ = f.base (g (x ⨁[𝕏] dx) ⨁[𝕐]
@@ -457,6 +458,7 @@ noncomputable def expFunctor (𝕏 : Change) : Change ⥤ Change where
                 rw [hf']
             _ = f.base (g x ⨁[𝕐] df x dx) := by
                 congr 1
+                symm
                 exact hdf₁ x dx
             _ = f.base (g x) ⨁[𝕫] f' (g x) (df x dx) :=
                 hf' (g x) (df x dx)
@@ -492,8 +494,7 @@ noncomputable def expFunctor (𝕏 : Change) : Change ⥤ Change where
         exact hf' (g x) (df x (𝟬[𝕏] x))
   }
 
-noncomputable def ev {𝕏 𝕐 : Change} :
-    𝕏.prod (exp 𝕏 𝕐) ⟶ 𝕐 where
+def ev : 𝕏.prod (exp 𝕏 𝕐) ⟶ 𝕐 where
   base := PartOrd.ofHom {
     toFun := fun (x, f) => f.base x
     monotone' := fun (_, f₁) (x₂, _) ⟨hx, hf⟩ =>
@@ -503,10 +504,10 @@ noncomputable def ev {𝕏 𝕐 : Change} :
     refine ⟨fun (x, ⟨f, _⟩) (dx, ⟨df, hdf⟩) => df x dx, ?_⟩
     intro (x, ⟨f, _⟩) (dx, ⟨df, hev, hmono, _⟩)
     change exp.update' f df (x ⨁[𝕏] dx) = f x ⨁[𝕐] df x dx
+    symm
     exact hev x dx
 
-noncomputable def coev {𝕏 𝕐 : Change} :
-    𝕐 ⟶ exp 𝕏 (𝕏.prod 𝕐) where
+def coev : 𝕐 ⟶ exp 𝕏 (𝕏.prod 𝕐) where
   base := PartOrd.ofHom {
     toFun y := {
       base := PartOrd.ofHom {
@@ -546,6 +547,7 @@ noncomputable def coev {𝕏 𝕐 : Change} :
         exact Prod.ext (𝕏.zero_update _) rfl
       refine ⟨df₀, ?_, hmono, ?_⟩
       · intro x dx
+        symm
         exact Prod.ext (𝕏.zero_update _) rfl
       · have : exp.update' f₀ df₀ = ⇑coevUpd.base := funext updEq
         rw [this]
@@ -583,7 +585,7 @@ notation "[" 𝕏 "]ᵈ" => disc 𝕏
 
 def comonad : Comonad Change where
   obj := disc
-  map {𝕏 𝕐} f := {
+  map f := {
     base := PartOrd.disc.comonad.map f.base
     hasDeriv := ⟨fun _ _ => ⟨⟩, fun _ _ => rfl⟩
   }
