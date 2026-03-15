@@ -516,7 +516,7 @@ noncomputable def expFunctor (𝕏 : Change) : Change ⥤ Change where
         exact hf' (g x) (df x (𝟬[𝕏] x))
   }
 
-def ev : 𝕏.prod (exp 𝕏 𝕐) ⟶ 𝕐 where
+def ev : 𝕏 ⊗ exp 𝕏 𝕐 ⟶ 𝕐 where
   base := PartOrd.ofHom {
     toFun := fun (x, f) => f.base x
     monotone' := fun (_, f₁) (x₂, _) ⟨hx, hf⟩ =>
@@ -534,7 +534,7 @@ def ev : 𝕏.prod (exp 𝕏 𝕐) ⟶ 𝕐 where
     change exp.update' f df (x ⨁[𝕏] dx) = f x ⨁[𝕐] df x dx
     exact (hev x dx)|>.symm
 
-def coev : 𝕐 ⟶ exp 𝕏 (𝕏.prod 𝕐) where
+def coev : 𝕐 ⟶ 𝕏.exp (𝕏 ⊗ 𝕐) where
   base := PartOrd.ofHom {
     toFun y := {
       base := PartOrd.ofHom ⟨fun x => (x, y), fun _ _ hx => ⟨hx, le_rfl⟩⟩
@@ -547,9 +547,9 @@ def coev : 𝕐 ⟶ exp 𝕏 (𝕏.prod 𝕐) where
   }
   hasDeriv := by
     refine ⟨fun y => PartOrd.ofHom ⟨fun dy => ?_, ?_⟩, ?_⟩
-    · set f : 𝕏.X ⟶ (𝕏.prod 𝕐).X :=
+    · set f : 𝕏.X ⟶ (𝕏 ⊗ 𝕐).X :=
         PartOrd.ofHom ⟨fun x => (x, y), fun _ _ hx => ⟨hx, le_rfl⟩⟩
-      let df : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ (𝕏.prod 𝕐).Δ (f x) :=
+      let df : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ (𝕏 ⊗ 𝕐).Δ (f x) :=
         fun x => PartOrd.ofHom ⟨fun dx => (dx, dy), fun _ _ h => ⟨h, le_rfl⟩⟩
       refine ⟨df, fun x dx => ?_, ⟨?_, ⟨fun x => ?_, ?_⟩⟩, ?_⟩
       · change (x ⨁[𝕏] dx, y ⨁[𝕐] dy) = (x ⨁[𝕏] dx ⨁[𝕏] 𝟬[𝕏] (x ⨁[𝕏] dx), y ⨁[𝕐] dy)
@@ -574,7 +574,7 @@ noncomputable def tensorProductAdjunction (𝕏 : Change) :
     counit.app _ := ev
   }
 
-noncomputable def curry_left (f : 𝕏.prod 𝕐 ⟶ 𝕫) : 𝕏 ⟶ exp 𝕐 𝕫 :=
+noncomputable def curry_left (f : 𝕏 ⊗ 𝕐 ⟶ 𝕫) : 𝕏 ⟶ exp 𝕐 𝕫 :=
   coev ≫ (expFunctor 𝕐).map (prod_lift snd fst ≫ f)
 
 noncomputable instance : MonoidalClosed Change :=
@@ -614,7 +614,7 @@ def comonad : Comonad Change where
 
 notation "[" f "]ᵈ" => disc.comonad.map f
 
-def iso_terminal : [terminal]ᵈ ≅ terminal where
+def iso_terminal : [𝟙_ Change]ᵈ ≅ 𝟙_ Change where
   hom := {
     base := PartOrd.disc.iso_terminal.hom
     hasDeriv := ⟨fun _ => PartOrd.terminal.from _, fun _ _ => rfl⟩
@@ -624,7 +624,7 @@ def iso_terminal : [terminal]ᵈ ≅ terminal where
     hasDeriv := ⟨fun _ => PartOrd.terminal.from _, fun _ _ => rfl⟩
   }
 
-def iso_prod (𝕏 𝕐 : Change) : [𝕏.prod 𝕐]ᵈ ≅ ([𝕏]ᵈ).prod ([𝕐]ᵈ) where
+def iso_prod (𝕏 𝕐 : Change) : [𝕏 ⊗ 𝕐]ᵈ ≅ [𝕏]ᵈ ⊗ [𝕐]ᵈ where
   hom := {
     base := PartOrd.disc.iso_prod 𝕏.X 𝕐.X |>.hom
     hasDeriv := ⟨fun _ => PartOrd.ofHom ⟨fun ⟨⟩ => (⟨⟩, ⟨⟩), fun _ _ _ => le_rfl⟩,
@@ -641,6 +641,24 @@ end disc
 end Section8
 
 section Section9
+
+def powerset : Change ⥤ SemilatSupCat where
+  obj 𝕏 := SemilatSupCat.of (Set 𝕏.X)
+  map {𝕏 𝕐} f := {
+    toFun s := f.base '' s
+    map_sup' := Set.image_union f.base
+    map_bot' := Set.image_empty f.base
+  }
+  map_id 𝕏 := by
+    apply SupBotHom.ext
+    intro s
+    change 𝟙 𝕏.X '' s = s
+    simp
+  map_comp {𝕏 𝕐 𝕫} f g := by
+    apply SupBotHom.ext
+    intro s
+    change (f.base ≫ g.base) '' s = g.base '' (f.base '' s)
+    simp [Set.image_image]
 
 def U.obj (L : SemilatSupCat) : Change where
   X := PartOrd.of L
@@ -664,13 +682,13 @@ def U : SemilatSupCat ⥤ Change where
   obj := U.obj
   map := U.map
 
-def bot {L : SemilatSupCat} : terminal ⟶ U.obj L where
+def bot {L : SemilatSupCat} : 𝟙_ Change ⟶ U.obj L where
   base := PartOrd.ofHom ⟨fun ⟨⟩ => (⊥ : L), fun _ _ _ => le_rfl⟩
   hasDeriv :=
     ⟨fun ⟨⟩ => PartOrd.ofHom ⟨fun ⟨⟩ => (⊥ : L), fun _ _ _ => le_rfl⟩,
       fun ⟨⟩ ⟨⟩ => (bot_sup_eq (⊥ : L)).symm⟩
 
-def sup {L : SemilatSupCat} : (U.obj L).prod (U.obj L) ⟶ U.obj L where
+def sup {L : SemilatSupCat} : U.obj L ⊗ U.obj L ⟶ U.obj L where
   base := PartOrd.ofHom {
     toFun := fun (l₁, l₂) => l₁ ⊔ l₂
     monotone' _ _ := fun ⟨hl, hm⟩ =>
@@ -683,7 +701,7 @@ def sup {L : SemilatSupCat} : (U.obj L).prod (U.obj L) ⟶ U.obj L where
     change L at l₁ l₂ dl₁ dl₂
     exact sup_sup_sup_comm l₁ dl₁ l₂ dl₂
 
-def one {𝕏 : Change} : disc 𝕏 ⟶ U.obj (PartOrd.powerset.obj 𝕏.X) where
+def one {𝕏 : Change} : disc 𝕏 ⟶ U.obj (powerset.obj 𝕏) where
   base := PartOrd.one
   hasDeriv := ⟨fun _ => PartOrd.ofHom ⟨fun _ => (∅ : Set 𝕏.X), fun _ _ _ => le_rfl⟩,
     fun x ⟨⟩ => (Set.union_empty {x}).symm⟩

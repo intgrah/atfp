@@ -26,7 +26,7 @@ def FinTy.denotationC : FinTy.{u} → Change.{u}
   | 1 => 𝟙_ Change
   | prod T₁ T₂ => 〚T₁〛 ⊗ 〚T₂〛
   | coprod T₁ T₂ => 〚T₁〛.coprod 〚T₂〛
-  | powerset T => U.obj (PartOrd.powerset.obj 〚T〛.X)
+  | powerset T => U.obj (Change.powerset.obj 〚T〛)
   | discrete T => [〚T〛]ᵈ
 
 set_option hygiene false in
@@ -37,7 +37,7 @@ noncomputable def Ty.denotationC : Ty.{u} → Change.{u}
   | prod A B => 〚A〛 ⊗ 〚B〛
   | arr A B => 〚A〛.exp 〚B〛
   | coprod A B => 〚A〛.coprod 〚B〛
-  | powerset T => U.obj (PartOrd.powerset.obj 〚T〛.X)
+  | powerset T => U.obj (Change.powerset.obj 〚T〛)
   | discrete A => [〚A〛]ᵈ
 
 lemma FinTy.toTy_denotationC {T : FinTy.{u}} :〚T〛 = 〚T.toTy〛 := by
@@ -68,24 +68,24 @@ noncomputable instance LatTy.instOrderBotC : (L : LatTy) → OrderBot 〚L〛.X
   | powerset T => inferInstanceAs (OrderBot (Set 〚T〛.X))
 
 noncomputable def LatTy.botC : (L : LatTy) → Change.terminal ⟶ 〚L〛
-  | .unit => Change.terminal.from _
-  | .prod L₁ L₂ =>
+  | unit => Change.terminal.from _
+  | prod L₁ L₂ =>
     prod_lift (Change.terminal.from _ ≫ L₁.botC) (Change.terminal.from _ ≫ L₂.botC)
-  | .powerset _ => Change.bot
+  | powerset _ => Change.bot
 
 noncomputable def LatTy.supC : (L : LatTy) → 〚L〛.prod 〚L〛 ⟶ 〚L〛
-  | .unit => Change.terminal.from _
-  | .prod L₁ L₂ => tensor_exchange.hom ≫ prod_lift
+  | unit => Change.terminal.from _
+  | prod L₁ L₂ => tensor_exchange.hom ≫ prod_lift
       (fst ≫ supC L₁) (snd ≫ supC L₂)
-  | .powerset _ => Change.sup
+  | powerset _ => Change.sup
 
 noncomputable def LatTy.comprehensionC {𝕏 : Change} {T : FinTy} :
     (L : LatTy) → (𝕏 ⊗ ([〚T〛]ᵈ) ⟶ 〚L〛) →
       (𝕏 ⊗ 〚𝒫 T〛 ⟶ 〚L〛)
-  | .unit, _ => Change.terminal.from _
-  | .prod L₁ L₂, f =>
+  | unit, _ => Change.terminal.from _
+  | prod L₁ L₂, f =>
     prod_lift (L₁.comprehensionC (f ≫ fst)) (L₂.comprehensionC (f ≫ snd))
-  | .powerset T', f => {
+  | powerset T', f => {
       base := PartOrd.ofHom
         { toFun := fun (a, (s : Set 〚T〛.X)) =>
             (⋃ x ∈ s, f.base (a, x) : Set 〚T'〛.X)
@@ -128,7 +128,8 @@ noncomputable def LatTy.comprehensionC {𝕏 : Change} {T : FinTy} :
             rw [eq, Set.mem_union] at hy
             rcases hy with hy | hy
             · first | exact .inl ⟨x, ‹_›, hy⟩ | exact .inr (.inr ⟨x, ‹_›, hy⟩)
-            · exact .inr (.inl ⟨x, by tauto, hy⟩) }
+            · exact .inr (.inl ⟨x, by tauto, hy⟩)
+          }
         · rintro (⟨x, hx, hy⟩ | ⟨x, hx, hy⟩ | ⟨x, hx, hy⟩)
           · exact ⟨x, .inl hx, f.base.hom.monotone
               (show ((a, x) : 𝕏.X × [〚T〛]ᵈ.X) ≤ (a ⨁[𝕏] da, x) from

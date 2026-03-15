@@ -27,7 +27,7 @@ def FinTy.denotation : FinTy.{u} → PartOrd.{u}
   | 1 => 𝟙_ PartOrd
   | prod T₁ T₂ => 〚T₁〛 ⊗ 〚T₂〛
   | coprod T₁ T₂ => 〚T₁〛.coprod 〚T₂〛
-  | powerset T => U.obj (PartOrd.powerset.obj 〚T〛)
+  | powerset T => of (Set 〚T〛)
   | discrete T => [〚T〛]ᵈ
 
 set_option hygiene false in
@@ -38,7 +38,7 @@ def Ty.denotation : Ty.{u} → PartOrd.{u}
   | prod A B => 〚A〛 ⊗ 〚B〛
   | arr A B => 〚A〛.exp 〚B〛
   | coprod A B => 〚A〛.coprod 〚B〛
-  | powerset T => U.obj (PartOrd.powerset.obj 〚T〛)
+  | powerset T => of (Set 〚T〛)
   | discrete A => [〚A〛]ᵈ
 
 lemma FinTy.toTy_denotation {T : FinTy} : 〚T〛 = 〚T.toTy〛 := by
@@ -59,18 +59,18 @@ lemma FinTy.toTy_denotation {T : FinTy} : 〚T〛 = 〚T.toTy〛 := by
     rfl
 
 instance : HasForget₂ CompleteLat PartOrd where
-  forget₂.obj L := PartOrd.of L
-  forget₂.map f := PartOrd.ofHom ⟨f, f.toBoundedLatticeHom.toBoundedOrderHom.toOrderHom.monotone⟩
+  forget₂.obj L := of L
+  forget₂.map f := ofHom ⟨f, f.toBoundedLatticeHom.toBoundedOrderHom.toOrderHom.monotone⟩
 
 def LatTy.bot' : ∀ L : LatTy, 〚L〛
-  | .unit => ()
-  | .prod L₁ L₂ => (bot' L₁, bot' L₂)
-  | .powerset T => (∅ : Set 〚T〛)
+  | unit => ()
+  | prod L₁ L₂ => (bot' L₁, bot' L₂)
+  | powerset T => (∅ : Set 〚T〛)
 
 def LatTy.sup' : ∀ L : LatTy, 〚L〛 → 〚L〛 → 〚L〛
-  | .unit, _, _ => ()
-  | .prod L₁ L₂, (x₁, x₂), (y₁, y₂) => (sup' L₁ x₁ y₁, sup' L₂ x₂ y₂)
-  | .powerset T, s₁, s₂ => show Set 〚T〛 from s₁ ∪ s₂
+  | unit, _, _ => ()
+  | prod L₁ L₂, (x₁, x₂), (y₁, y₂) => (sup' L₁ x₁ y₁, sup' L₂ x₂ y₂)
+  | powerset T, s₁, s₂ => show Set 〚T〛 from s₁ ∪ s₂
 
 lemma LatTy.bot'_le (L : LatTy) (x : 〚L〛) : L.bot' ≤ x := by
   induction L with
@@ -106,22 +106,22 @@ instance LatTy.instOrderBot (L : LatTy) : OrderBot 〚L〛 where
   bot := L.bot'
   bot_le := L.bot'_le
 
-def LatTy.bot (L : LatTy) : PartOrd.terminal ⟶ 〚L〛 :=
+def LatTy.bot (L : LatTy) : 𝟙_ PartOrd ⟶ 〚L〛 :=
   ofHom ⟨fun ⟨⟩ => L.bot', fun ⟨⟩ ⟨⟩ ⟨⟩ => le_rfl⟩
 
 def LatTy.sup : ∀ L : LatTy, 〚L〛 ⊗ 〚L〛 ⟶ 〚L〛
-  | .unit => terminal.from _
-  | .prod L₁ L₂ => tensor_exchange.hom ≫ (sup L₁ ⊗ₘ sup L₂)
-  | .powerset T => U.sup (PartOrd.powerset.obj 〚T〛)
+  | unit => terminal.from (𝟙_ PartOrd ⊗ 𝟙_ PartOrd)
+  | prod L₁ L₂ => tensor_exchange.hom ≫ (sup L₁ ⊗ₘ sup L₂)
+  | powerset T => U.sup (PartOrd.powerset.obj 〚T〛)
 
 def LatTy.comprehension {A : PartOrd} {X : FinTy} :
     ∀ L : LatTy, (A ⊗ [〚X〛]ᵈ ⟶ 〚L〛) → (A ⊗ 〚𝒫 X〛 ⟶ 〚L〛)
-  | .unit, _ => PartOrd.terminal.from _
-  | .prod L₁ L₂, f =>
+  | unit, _ => terminal.from _
+  | prod L₁ L₂, f =>
     let f₁ : A ⊗ [〚X〛]ᵈ ⟶ 〚L₁〛 := f ≫ fst
     let f₂ : A ⊗ [〚X〛]ᵈ ⟶ 〚L₂〛 := f ≫ snd
     prod_lift (L₁.comprehension f₁) (L₂.comprehension f₂)
-  | .powerset T, f =>
+  | powerset T, f =>
     PartOrd.ofHom {
       toFun := fun (a, (s : Set 〚X〛)) => ⋃ x ∈ s, f (a, x)
       monotone' := by

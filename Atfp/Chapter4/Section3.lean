@@ -120,7 +120,7 @@ def coprod.isColimit :
       · exact congrArg (·.hom b) h₂
     )
 
-def dist {A B C : PartOrd.{u}} : A.prod (B.coprod C) ≅ (A.prod B).coprod (A.prod C) where
+def dist {A B C : PartOrd.{u}} : A ⊗ (B.coprod C) ≅ (A ⊗ B).coprod (A ⊗ C) where
   hom := ofHom {
     toFun
       | (a, .inl b) => .inl (a, b)
@@ -160,14 +160,14 @@ def expFunctor (A : PartOrd) : PartOrd ⥤ PartOrd where
     monotone' _ _ h x := f.hom.monotone (h x)
   }
 
-def ev : A ⊗ of (A ⟶ B) ⟶ B :=
+def ev : A ⊗ A.exp B ⟶ B :=
   ofHom {
-    toFun := fun (a, f) => f a
+    toFun := fun (a, f) => f.hom a
     monotone' := fun (_, f₁) (a₂, _) ⟨ha, hf⟩ =>
       (f₁.hom.monotone ha).trans (hf a₂)
   }
 
-def coev : B ⟶ of (A ⟶ A.prod B) :=
+def coev : B ⟶ A.exp (A ⊗ B) :=
   ofHom {
     toFun b := ofHom {
       toFun a := (a, b)
@@ -225,15 +225,15 @@ def comonad : Comonad PartOrd where
 
 notation "[" f "]ᵈ" => disc.comonad.map f
 
-def iso_terminal : [terminal]ᵈ ≅ terminal where
-  hom := @ofHom [terminal]ᵈ terminal _ _ ⟨id, fun _ _ _ => le_rfl⟩
-  inv := @ofHom terminal [terminal]ᵈ _ _ ⟨id, fun _ _ _ => rfl⟩
+def iso_terminal : [𝟙_ PartOrd]ᵈ ≅ 𝟙_ PartOrd where
+  hom := @ofHom [𝟙_ PartOrd]ᵈ _ _ _ ⟨id, fun _ _ _ => le_rfl⟩
+  inv := @ofHom _ [𝟙_ PartOrd]ᵈ _ _ ⟨id, fun _ _ _ => rfl⟩
   hom_inv_id := rfl
   inv_hom_id := rfl
 
-def iso_prod (X Y : PartOrd) : [X.prod Y]ᵈ ≅ ([X]ᵈ.prod [Y]ᵈ) where
-  hom := @ofHom [X.prod Y]ᵈ ([X]ᵈ.prod [Y]ᵈ) _ _ ⟨id, fun _ _ h => (Prod.ext_iff.mp h)⟩
-  inv := @ofHom ([X]ᵈ.prod [Y]ᵈ) [X.prod Y]ᵈ _ _ ⟨id, fun _ _ h => (Prod.ext_iff.mpr h)⟩
+def iso_prod (X Y : PartOrd) : [X ⊗ Y]ᵈ ≅ [X]ᵈ ⊗ [Y]ᵈ where
+  hom := @ofHom [X ⊗ Y]ᵈ _ _ _ ⟨id, fun _ _ h => (Prod.ext_iff.mp h)⟩
+  inv := @ofHom _ [X ⊗ Y]ᵈ _ _ ⟨id, fun _ _ h => (Prod.ext_iff.mpr h)⟩
   hom_inv_id := rfl
   inv_hom_id := rfl
 
@@ -259,14 +259,14 @@ def powerset : PartOrd ⥤ SemilatSupCat where
 
 def U := forget₂ SemilatSupCat PartOrd
 
-def U.bot (L : SemilatSupCat) : PartOrd.terminal ⟶ U.obj L :=
-  PartOrd.ofHom ⟨fun _ => ⊥, fun _ _ _ => le_rfl⟩
+abbrev U.bot (L : SemilatSupCat) : 𝟙_ PartOrd ⟶ U.obj L :=
+  ofHom ⟨fun _ => ⊥, fun _ _ _ => le_rfl⟩
 
-def U.sup (L : SemilatSupCat) : (U.obj L).prod (U.obj L) ⟶ U.obj L :=
-  PartOrd.ofHom ⟨fun (x, y) => x ⊔ y, fun _ _ ⟨hx, hy⟩ => sup_le_sup hx hy⟩
+abbrev U.sup (L : SemilatSupCat) : U.obj L ⊗ U.obj L ⟶ U.obj L :=
+  ofHom ⟨fun (x, y) => x ⊔ y, fun _ _ ⟨hx, hy⟩ => sup_le_sup hx hy⟩
 
-def one {X : PartOrd} : [X]ᵈ ⟶ U.obj (powerset.obj X) :=
-  PartOrd.ofHom (X := [X]ᵈ) {
+abbrev one {X : PartOrd} : [X]ᵈ ⟶ of (Set X) :=
+  ofHom (X := [X]ᵈ) {
     toFun x := ({x} : Set X)
     monotone' := by intro _ _ rfl; rfl
   }
