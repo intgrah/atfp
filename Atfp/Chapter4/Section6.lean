@@ -218,26 +218,24 @@ namespace Change
 
 section Section3
 
-variable (𝕏 𝕐 : Change)
-
 @[ext]
-structure Hom where
+structure Hom (𝕏 𝕐 : Change) where
   base : 𝕏.X ⟶ 𝕐.X
   hasDeriv : ∃ f' : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ 𝕐.Δ (base x),
     IsDerivative base f'
+
+variable {𝕏 𝕐 : Change}
 
 instance : FunLike (Hom 𝕏 𝕐) 𝕏.X 𝕐.X where
   coe f := f.base
   coe_injective' _ _ h :=
     Hom.ext (ConcreteCategory.hom_injective (DFunLike.coe_fn_eq.mp h))
 
-variable {𝕏 𝕐 : Change}
-
 noncomputable def Hom.deriv (h : Hom 𝕏 𝕐) :
     ∀ x : 𝕏.X, 𝕏.Δ x ⟶ 𝕐.Δ (h.base x) :=
   h.hasDeriv.choose
 
-def id 𝕏 : Hom 𝕏 𝕏 where
+def id (𝕏 : Change) : Hom 𝕏 𝕏 where
   base := 𝟙 𝕏.X
   hasDeriv := ⟨fun _ => 𝟙 _, fun _ _ => rfl⟩
 
