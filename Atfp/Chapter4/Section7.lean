@@ -75,7 +75,7 @@ noncomputable def LatTy.botC : (L : LatTy) → Change.terminal ⟶ 〚L〛
 
 noncomputable def LatTy.supC : (L : LatTy) → 〚L〛.prod 〚L〛 ⟶ 〚L〛
   | unit => Change.terminal.from _
-  | prod L₁ L₂ => tensor_exchange.hom ≫ prod_lift
+  | prod L₁ L₂ => tensorExchange.hom ≫ prod_lift
       (fst ≫ supC L₁) (snd ≫ supC L₂)
   | powerset _ => Change.sup
 

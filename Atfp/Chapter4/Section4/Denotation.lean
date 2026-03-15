@@ -111,7 +111,7 @@ def LatTy.bot (L : LatTy) : 𝟙_ PartOrd ⟶ 〚L〛 :=
 
 def LatTy.sup : ∀ L : LatTy, 〚L〛 ⊗ 〚L〛 ⟶ 〚L〛
   | unit => terminal.from (𝟙_ PartOrd ⊗ 𝟙_ PartOrd)
-  | prod L₁ L₂ => tensor_exchange.hom ≫ (sup L₁ ⊗ₘ sup L₂)
+  | prod L₁ L₂ => tensorExchange.hom ≫ (sup L₁ ⊗ₘ sup L₂)
   | powerset T => U.sup (PartOrd.powerset.obj 〚T〛)
 
 def LatTy.comprehension {A : PartOrd} {X : FinTy} :

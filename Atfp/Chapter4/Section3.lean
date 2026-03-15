@@ -46,19 +46,6 @@ def prod_lift (f : C ⟶ A) (g : C ⟶ B) : C ⟶ A.prod B :=
     monotone' _ _ h := ⟨f.hom.monotone h, g.hom.monotone h⟩
   }
 
-def tensor_exchange :
-    (A.prod B).prod (C.prod D) ≅ (A.prod C).prod (B.prod D) where
-  hom := ofHom {
-    toFun := fun ((a, b), (c, d)) => ((a, c), (b, d))
-    monotone' := fun _ _ ⟨⟨ha, hb⟩, ⟨hc, hd⟩⟩ => ⟨⟨ha, hc⟩, ⟨hb, hd⟩⟩
-  }
-  inv := ofHom {
-    toFun := fun ((a, c), (b, d)) => ((a, b), (c, d))
-    monotone' := fun _ _ ⟨⟨ha, hc⟩, ⟨hb, hd⟩⟩ => ⟨⟨ha, hb⟩, ⟨hc, hd⟩⟩
-  }
-  hom_inv_id := rfl
-  inv_hom_id := rfl
-
 def prod_isLimit :
     IsLimit (BinaryFan.mk (P := A.prod B) fst snd) :=
   BinaryFan.isLimitMk
@@ -120,28 +107,6 @@ def coprod.isColimit :
       · exact congrArg (·.hom b) h₂
     )
 
-def dist {A B C : PartOrd.{u}} : A ⊗ (B.coprod C) ≅ (A ⊗ B).coprod (A ⊗ C) where
-  hom := ofHom {
-    toFun
-      | (a, .inl b) => .inl (a, b)
-      | (a, .inr c) => .inr (a, c)
-    monotone' := by
-      rintro ⟨a₁, b₁ | c₁⟩ ⟨a₁, b₂ | c₂⟩ ⟨ha, hb | hc⟩
-      · exact Sum.LiftRel.inl ⟨ha, hb⟩
-      · exact Sum.LiftRel.inr ⟨ha, hc⟩
-  }
-  inv := ofHom {
-    toFun
-      | .inl (a, b) => (a, .inl b)
-      | .inr (a, c) => (a, .inr c)
-    monotone' := by
-      rintro (⟨a₁, b₁⟩ | ⟨a₁, c₁⟩) (⟨a₂, b₂⟩ | ⟨a₂, c₂⟩) (⟨ha, hb⟩ | ⟨ha, hc⟩)
-      · exact ⟨ha, Sum.LiftRel.inl hb⟩
-      · exact ⟨ha, Sum.LiftRel.inr hc⟩
-  }
-  hom_inv_id := by ext ⟨a, b | c⟩ <;> rfl
-  inv_hom_id := by ext (⟨a, b⟩ | ⟨a, c⟩) <;> rfl
-
 instance (A B : PartOrd) : PartialOrder (A ⟶ B) where
   le f g := ∀ x, f x ≤ g x
   le_refl _ _ := le_rfl
@@ -160,14 +125,14 @@ def expFunctor (A : PartOrd) : PartOrd ⥤ PartOrd where
     monotone' _ _ h x := f.hom.monotone (h x)
   }
 
-def ev : A ⊗ A.exp B ⟶ B :=
+def ev : A ⊗ of (A ⟶ B) ⟶ B :=
   ofHom {
-    toFun := fun (a, f) => f.hom a
+    toFun := fun (a, f) => f a
     monotone' := fun (_, f₁) (a₂, _) ⟨ha, hf⟩ =>
       (f₁.hom.monotone ha).trans (hf a₂)
   }
 
-def coev : B ⟶ A.exp (A ⊗ B) :=
+def coev : B ⟶ of (A ⟶ A ⊗ B) :=
   ofHom {
     toFun b := ofHom {
       toFun a := (a, b)
@@ -204,6 +169,32 @@ def uncurry (f : B ⟶ of (A ⟶ C)) : A ⊗ B ⟶ C :=
 
 instance : MonoidalClosed PartOrd :=
   MonoidalClosed.mk fun A => Closed.mk _ (PartOrd.tensorProductAdjunction A)
+
+def tensorExchange : (A ⊗ B) ⊗ (C ⊗ D) ≅ (A ⊗ C) ⊗ (B ⊗ D) where
+  hom := prod_lift (prod_lift (fst ≫ fst) (snd ≫ fst)) (prod_lift (fst ≫ snd) (snd ≫ snd))
+  inv := prod_lift (prod_lift (fst ≫ fst) (snd ≫ fst)) (prod_lift (fst ≫ snd) (snd ≫ snd))
+
+def dist {A B C : PartOrd.{u}} : A ⊗ (B.coprod C) ≅ (A ⊗ B).coprod (A ⊗ C) where
+  hom := ofHom {
+    toFun
+      | (a, .inl b) => .inl (a, b)
+      | (a, .inr c) => .inr (a, c)
+    monotone' := by
+      rintro ⟨a₁, b₁ | c₁⟩ ⟨a₁, b₂ | c₂⟩ ⟨ha, hb | hc⟩
+      · exact Sum.LiftRel.inl ⟨ha, hb⟩
+      · exact Sum.LiftRel.inr ⟨ha, hc⟩
+  }
+  inv := ofHom {
+    toFun
+      | .inl (a, b) => (a, .inl b)
+      | .inr (a, c) => (a, .inr c)
+    monotone' := by
+      rintro (⟨a₁, b₁⟩ | ⟨a₁, c₁⟩) (⟨a₂, b₂⟩ | ⟨a₂, c₂⟩) (⟨ha, hb⟩ | ⟨ha, hc⟩)
+      · exact ⟨ha, Sum.LiftRel.inl hb⟩
+      · exact ⟨ha, Sum.LiftRel.inr hc⟩
+  }
+  hom_inv_id := by ext ⟨a, b | c⟩ <;> rfl
+  inv_hom_id := by ext (⟨a, b⟩ | ⟨a, c⟩) <;> rfl
 
 def disc (X : PartOrd) : PartOrd where
   carrier := X
