@@ -37,7 +37,7 @@ noncomputable def Ty.denotationC : Ty.{u} → Change.{u}
   | prod A B => 〚A〛 ⊗ 〚B〛
   | arr A B => 〚A〛.exp 〚B〛
   | coprod A B => 〚A〛.coprod 〚B〛
-  | powerset T => U.obj (PartOrd.powerset.obj T.denotationC.X)
+  | powerset T => U.obj (PartOrd.powerset.obj 〚T〛.X)
   | discrete A => [〚A〛]ᵈ
 
 lemma FinTy.toTy_denotationC {T : FinTy.{u}} :〚T〛 = 〚T.toTy〛 := by
@@ -60,12 +60,12 @@ lemma FinTy.toTy_denotationC {T : FinTy.{u}} :〚T〛 = 〚T.toTy〛 := by
 instance LatTy.instSemilatticeSupC : (L : LatTy) → SemilatticeSup 〚L〛.X
   | unit => inferInstanceAs (SemilatticeSup PUnit)
   | prod L₁ L₂ => @Prod.instSemilatticeSup _ _ L₁.instSemilatticeSupC L₂.instSemilatticeSupC
-  | powerset T => inferInstanceAs (SemilatticeSup (Set T.denotationC.X))
+  | powerset T => inferInstanceAs (SemilatticeSup (Set 〚T〛.X))
 
 noncomputable instance LatTy.instOrderBotC : (L : LatTy) → OrderBot 〚L〛.X
   | unit => inferInstanceAs (OrderBot PUnit)
   | prod L₁ L₂ => @Prod.instOrderBot _ _ _ _ L₁.instOrderBotC L₂.instOrderBotC
-  | powerset T => inferInstanceAs (OrderBot (Set T.denotationC.X))
+  | powerset T => inferInstanceAs (OrderBot (Set 〚T〛.X))
 
 noncomputable def LatTy.botC : (L : LatTy) → Change.terminal ⟶ 〚L〛
   | .unit => Change.terminal.from _
@@ -90,7 +90,7 @@ noncomputable def LatTy.comprehensionC {𝕏 : Change} {T : FinTy} :
         { toFun := fun (a, (s : Set 〚T〛.X)) =>
             (⋃ x ∈ s, f.base (a, x) : Set 〚T'〛.X)
           monotone' := by
-            intro (a₁, (s₁ : Set 〚T〛.X)) (a₂, (s₂ : Set T.denotationC.X)) ⟨ha, hs⟩
+            intro (a₁, (s₁ : Set 〚T〛.X)) (a₂, (s₂ : Set 〚T〛.X)) ⟨ha, hs⟩
             apply Set.iUnion₂_subset
             intro x hx₁
             have h₁ : f.base (a₁, x) ≤ f.base (a₂, x) := f.base.hom.monotone ⟨ha, le_rfl⟩
@@ -99,10 +99,10 @@ noncomputable def LatTy.comprehensionC {𝕏 : Change} {T : FinTy} :
             exact h₁.trans h₂ }
       hasDeriv := by
         obtain ⟨f', hf'⟩ := f.hasDeriv
-        refine ⟨fun (a, (s : Set T.denotationC.X)) => PartOrd.ofHom
-          ⟨fun ((da, (ds : Set T.denotationC.X)) : 𝕏.Δ a × Set T.denotationC.X) =>
+        refine ⟨fun (a, (s : Set 〚T〛.X)) => PartOrd.ofHom
+          ⟨fun ((da, (ds : Set 〚T〛.X)) : 𝕏.Δ a × Set 〚T〛.X) =>
             ((⋃ x ∈ s ∪ ds, f' (a, x) (da, ⟨⟩)) ∪ ⋃ x ∈ ds, f.base (a, x)
-              : Set T'.denotationC.X),
+              : Set 〚T'〛.X),
           fun (da₁, ds₁) (da₂, ds₂) ⟨hda, hds⟩ => by
             apply Set.union_subset_union
             · apply Set.iUnion₂_subset
@@ -113,9 +113,9 @@ noncomputable def LatTy.comprehensionC {𝕏 : Change} {T : FinTy} :
                   (Set.union_subset_union_right s hds hx))
             · exact Set.iUnion₂_subset fun x hx =>
                 (Set.subset_biUnion_of_mem (u := fun x => f.base (a, x)) (hds hx))⟩,
-          fun (a, (s : Set T.denotationC.X))
-              ((da, (ds : Set T.denotationC.X)) : 𝕏.Δ a × Set T.denotationC.X) => ?_⟩
-        change (⋃ x ∈ s ∪ ds, f.base (a ⨁[𝕏] da, x) : Set T'.denotationC.X) =
+          fun (a, (s : Set 〚T〛.X))
+              ((da, (ds : Set 〚T〛.X)) : 𝕏.Δ a × Set 〚T〛.X) => ?_⟩
+        change (⋃ x ∈ s ∪ ds, f.base (a ⨁[𝕏] da, x) : Set 〚T'〛.X) =
           (⋃ x ∈ s, f.base (a, x)) ∪
             ((⋃ x ∈ s ∪ ds, f' (a, x) (da, ⟨⟩)) ∪ ⋃ x ∈ ds, f.base (a, x))
         ext y
@@ -123,7 +123,7 @@ noncomputable def LatTy.comprehensionC {𝕏 : Change} {T : FinTy} :
         apply Iff.intro
         · rintro ⟨x, hx | hx, hy⟩ <;> {
             have eq : f.base (a ⨁[𝕏] da, x) =
-                (f.base (a, x) ∪ f' (a, x) (da, ⟨⟩) : Set T'.denotationC.X) :=
+                (f.base (a, x) ∪ f' (a, x) (da, ⟨⟩) : Set 〚T'〛.X) :=
               hf' (a, x) (da, ⟨⟩)
             rw [eq, Set.mem_union] at hy
             rcases hy with hy | hy
@@ -131,13 +131,13 @@ noncomputable def LatTy.comprehensionC {𝕏 : Change} {T : FinTy} :
             · exact .inr (.inl ⟨x, by tauto, hy⟩) }
         · rintro (⟨x, hx, hy⟩ | ⟨x, hx, hy⟩ | ⟨x, hx, hy⟩)
           · exact ⟨x, .inl hx, f.base.hom.monotone
-              (show ((a, x) : 𝕏.X × [T.denotationC]ᵈ.X) ≤ (a ⨁[𝕏] da, x) from
+              (show ((a, x) : 𝕏.X × [〚T〛]ᵈ.X) ≤ (a ⨁[𝕏] da, x) from
                 ⟨𝕏.update_monotone a da, rfl⟩) hy⟩
           · have eq := hf' (a, x) (da, ⟨⟩)
             dsimp [Change.prod, Change.disc] at eq
             exact ⟨x, hx.elim .inl .inr, eq ▸ .inr hy⟩
           · exact ⟨x, .inr hx, f.base.hom.monotone
-              (show ((a, x) : 𝕏.X × [T.denotationC]ᵈ.X) ≤ (a ⨁[𝕏] da, x) from
+              (show ((a, x) : 𝕏.X × [〚T〛]ᵈ.X) ≤ (a ⨁[𝕏] da, x) from
                 ⟨𝕏.update_monotone a da, rfl⟩) hy⟩
     }
 
@@ -190,8 +190,8 @@ theorem LatTy.nat_card_eqC : ∀ L : LatTy, Nat.card 〚L〛.X = L.card
     change Nat.card (〚L₁〛.X × 〚L₂〛.X) = L₁.card * L₂.card
     rw [Nat.card_prod, L₁.nat_card_eqC, L₂.nat_card_eqC]
   | powerset T => by
-    change Nat.card (Set T.denotationC.X) = 2 ^ T.card
-    rw [show Set T.denotationC.X = (T.denotationC.X → Prop) from rfl,
+    change Nat.card (Set 〚T〛.X) = 2 ^ T.card
+    rw [show Set 〚T〛.X = (〚T〛.X → Prop) from rfl,
       @Nat.card_fun _ _ T.instFiniteC, T.nat_card_eqC]
     simp [Nat.card_eq_fintype_card]
 
