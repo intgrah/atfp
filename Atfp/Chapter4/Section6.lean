@@ -387,11 +387,12 @@ def exp.update'
 
 theorem exp.update'_eq_of_isDerivative
     {f : 𝕏.X ⟶ 𝕐.X} {f' : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ 𝕐.Δ (f x)}
-    (hf' : IsDerivative f f') (x : 𝕏.X) :
-    update' f f' x = f x :=
+    (hf' : IsDerivative f f') :
+    update' f f' = f := by
+  ext x
   calc f x ⨁[𝕐] f' x (𝟬[𝕏] x)
     _ = f (x ⨁[𝕏] 𝟬[𝕏] x) := (hf' x (𝟬[𝕏] x)).symm
-    _ = f x := by rw [𝕏.zero_update]
+    _ = f x := congrArg f (𝕏.zero_update x)
 
 open exp in
 noncomputable def exp (𝕏 𝕐 : Change) : Change where
@@ -399,32 +400,37 @@ noncomputable def exp (𝕏 𝕐 : Change) : Change where
   Δ := fun ⟨f, _⟩ => PartOrd.of
     { df : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ 𝕐.Δ (f x) //
       (∀ x dx, f x ⨁[𝕐] df x dx = update' f df (x ⨁[𝕏] dx)) ∧
-      Monotone (update' f df) ∧
-      ∃ g' : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ 𝕐.Δ (update' f df x),
-        ∀ x dx, update' f df (x ⨁[𝕏] dx) = update' f df x ⨁[𝕐] g' x dx
+      ∃ g : 𝕏 ⟶ 𝕐, update' f df = g.base.hom
     }
-  update := fun ⟨f, _⟩ ⟨df, _, hdf⟩ =>
-    ⟨PartOrd.ofHom ⟨update' f df, hdf.left⟩, hdf.right⟩
+  update := by
+    intro ⟨f, _⟩ ⟨df, _, hdf⟩
+    refine ⟨PartOrd.ofHom ⟨update' f df, ?_⟩, ?_⟩
+    all_goals
+      have ⟨g, hg⟩ := hdf
+      have hmono : Monotone (update' f df) :=
+        hg ▸ g.base.hom.monotone
+    · exact hmono
+    · have : PartOrd.ofHom ⟨update' f df, hmono⟩ = g.base :=
+        PartOrd.ext (congrFun hg)
+      rw [this]
+      exact g.hasDeriv
   update_monotone := by
-    intro ⟨f, _⟩ ⟨df, _, _, _⟩ x
+    intro ⟨f, _⟩ ⟨df, _, _⟩ x
     exact 𝕐.update_monotone (f x) _
   zero := by
     intro ⟨f, hf⟩
     have hf' := hf.choose_spec
     have upd₀ := update'_eq_of_isDerivative hf'
-    have hmono : Monotone (update' f hf.choose) := by
-      intro _ _ h
-      rw [upd₀, upd₀]
-      exact f.hom.monotone h
-    refine ⟨hf.choose, ?_, hmono, ?_⟩
-    · intro x dx
-      rw [upd₀, hf' x dx]
-    · have : update' f hf.choose = ⇑f := funext upd₀
-      rw [this]
-      exact ⟨hf.choose, hf'⟩
+    refine ⟨hf.choose, ?_, ⟨f, hf⟩, upd₀⟩
+    intro x dx
+    rw [upd₀]
+    exact (hf' x dx).symm
   zero_update := by
     intro ⟨f, hf⟩
-    exact Hom.ext (PartOrd.ext (update'_eq_of_isDerivative hf.choose_spec ·))
+    apply Hom.ext
+    ext x
+    change update' f hf.choose x = f x
+    exact congrFun (update'_eq_of_isDerivative hf.choose_spec) x
 
 def terminalCone : LimitCone (Functor.empty Change) where
   cone := asEmptyCone terminal
@@ -484,49 +490,27 @@ noncomputable def expFunctor (𝕏 : Change) : Change ⥤ Change where
       obtain ⟨f', hf'⟩ := f.hasDeriv
       refine ⟨?_, ?_⟩
       · intro ⟨g, _⟩
-        refine PartOrd.ofHom ⟨fun ⟨df, hdf⟩ =>
-          ⟨fun x => (df x) ≫ (f' (g x)), ?_, ?_⟩, ?_⟩
+        refine PartOrd.ofHom ⟨fun ⟨df, hdf⟩ => ⟨fun x => df x ≫ f' (g x), ?_, ?_⟩, ?_⟩
         · intro x dx
-          symm
-          calc f.base (g (x ⨁[𝕏] dx)) ⨁[𝕫]
-                f' (g (x ⨁[𝕏] dx)) (df (x ⨁[𝕏] dx) (𝟬[𝕏] (x ⨁[𝕏] dx)))
+          calc f.base (g x) ⨁[𝕫] f' (g x) (df x dx)
+            _ = f.base (g x ⨁[𝕐] df x dx) :=
+                (hf' (g x) (df x dx)).symm
             _ = f.base (g (x ⨁[𝕏] dx) ⨁[𝕐]
-                  df (x ⨁[𝕏] dx) (𝟬[𝕏] (x ⨁[𝕏] dx))) := by
+                  df (x ⨁[𝕏] dx) (𝟬[𝕏] (x ⨁[𝕏] dx))) :=
+                congrArg f.base (hdf.left x dx)
+            _ = f.base (g (x ⨁[𝕏] dx)) ⨁[𝕫]
+                f' (g (x ⨁[𝕏] dx)) (df (x ⨁[𝕏] dx) (𝟬[𝕏] (x ⨁[𝕏] dx))) := by
                 rw [hf']
-            _ = f.base (g x ⨁[𝕐] df x dx) := by
-                congr 1
-                symm
-                exact hdf.left x dx
-            _ = f.base (g x) ⨁[𝕫] f' (g x) (df x dx) :=
-                hf' (g x) (df x dx)
-        · have ⟨hmono_g, g'_g, hg'_g⟩ := hdf.right
-          let df' : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ 𝕫.Δ ((g ≫ f.base) x) :=
-            fun x => (df x) ≫ (f' (g x))
-          have updEq : ∀ z, update' (g ≫ f.base) df' z =
-              f.base (update' g df z) := by
-            intro z
-            symm
-            exact hf' (g z) (df z (𝟬[𝕏] z))
-          have hmono : Monotone (update' (g ≫ f.base) df') := by
-            intro _ _ h
-            rw [updEq, updEq]
-            exact f.base.hom.monotone (hmono_g h)
-          refine ⟨hmono, ?_⟩
-          have : update' (g ≫ f.base) df'
-              = ⇑f.base ∘ update' g df := funext updEq
-          rw [this]
-          refine ⟨fun x => (g'_g x) ≫ (f' (update' g df x)), ?_⟩
-          intro x dx
-          calc f.base (update' g df (x ⨁[𝕏] dx))
-            _ = f.base (update' g df x ⨁[𝕐] g'_g x dx) :=
-                congrArg f.base (hg'_g x dx)
-            _ = f.base (update' g df x) ⨁[𝕫]
-                f' (update' g df x) (g'_g x dx) :=
-                hf' (update' g df x) (g'_g x dx)
+        · obtain ⟨g_hom, hg_eq⟩ := hdf.right
+          refine ⟨g_hom ≫ f, ?_⟩
+          ext z
+          calc update' (g ≫ f.base) (fun x => df x ≫ f' (g x)) z
+            _ = f.base (update' g df z) := hf' (g z) (df z (𝟬[𝕏] z)) |>.symm
+            _ = f.base (g_hom.base z) := by rw [hg_eq]
         · intro ⟨df₁, _⟩ ⟨df₂, _⟩ h x dx
           change (df₁ x ≫ f' (g x)) dx ≤ (df₂ x ≫ f' (g x)) dx
           exact (f' (g x)).hom.monotone (h x dx)
-      · intro ⟨g, _⟩ ⟨df, _, hmono, _⟩
+      · intro ⟨g, _⟩ ⟨df, _, _⟩
         apply Hom.ext
         ext x
         exact hf' (g x) (df x (𝟬[𝕏] x))
@@ -541,59 +525,46 @@ def ev : 𝕏.prod (exp 𝕏 𝕐) ⟶ 𝕐 where
   hasDeriv := by
     refine ⟨?_, ?_⟩
     · intro (x, ⟨f, _⟩)
-      refine PartOrd.ofHom ⟨fun ⟨dx, ⟨df, _, _, _⟩⟩ => df x dx, ?_⟩
-      intro ⟨dx₁, ⟨df₁, _, _, _⟩⟩ ⟨dx₂, ⟨df₂, _, _, _⟩⟩ ⟨hdx, hdf⟩
+      refine PartOrd.ofHom ⟨fun ⟨dx, ⟨df, _, _⟩⟩ => df x dx, ?_⟩
+      intro ⟨dx₁, ⟨df₁, _, _⟩⟩ ⟨dx₂, ⟨df₂, _, _⟩⟩ ⟨hdx, hdf⟩
       calc (df₁ x) dx₁
         _ ≤ (df₁ x) dx₂ := (df₁ x).hom.monotone hdx
         _ ≤ (df₂ x) dx₂ := hdf x dx₂
-    intro (x, ⟨f, _⟩) ⟨dx, ⟨df, hev, hmono, _⟩⟩
+    intro (x, ⟨f, _⟩) ⟨dx, ⟨df, hev, _⟩⟩
     change exp.update' f df (x ⨁[𝕏] dx) = f x ⨁[𝕐] df x dx
-    symm
-    exact hev x dx
+    exact (hev x dx)|>.symm
 
 def coev : 𝕐 ⟶ exp 𝕏 (𝕏.prod 𝕐) where
   base := PartOrd.ofHom {
     toFun y := {
-      base := PartOrd.ofHom {
-        toFun x := (x, y)
-        monotone' _ _ hx := ⟨hx, le_rfl⟩
-      }
+      base := PartOrd.ofHom ⟨fun x => (x, y), fun _ _ hx => ⟨hx, le_rfl⟩⟩
       hasDeriv := by
-        refine ⟨fun x => PartOrd.ofHom ⟨fun dx => (dx, 𝟬[𝕐] y),
-          fun _ _ h => Prod.mk_le_mk.mpr ⟨h, le_rfl⟩⟩, ?_⟩
-        intro _ _
-        exact Prod.ext rfl (𝕐.zero_update y).symm
+        refine ⟨fun x => PartOrd.ofHom ⟨fun dx => (dx, 𝟬[𝕐] y), ?_⟩, ?_⟩
+        · exact fun _ _ h => ⟨h, le_rfl⟩
+        · exact fun _ _ => Prod.ext rfl (𝕐.zero_update y).symm
     }
     monotone' _ _ hy x := ⟨le_rfl, hy⟩
   }
   hasDeriv := by
-    refine ⟨fun y => ?_, ?_⟩
-    · refine PartOrd.ofHom ⟨fun dy => ?_, ?_⟩
-      · set f : 𝕏.X ⟶ (𝕏.prod 𝕐).X :=
-          PartOrd.ofHom ⟨fun x => (x, y), fun _ _ hx => ⟨hx, le_rfl⟩⟩
-        set df : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ (𝕏.prod 𝕐).Δ (f x) :=
-          fun x => PartOrd.ofHom ⟨fun dx => (dx, dy),
-            fun _ _ h => Prod.mk_le_mk.mpr ⟨h, le_rfl⟩⟩
-        have upd_eq : exp.update' f df = fun x => (x, y ⨁[𝕐] dy) := by
-          ext x
-          change (x ⨁[𝕏] 𝟬[𝕏] x, y ⨁[𝕐] dy) = (x, y ⨁[𝕐] dy)
-          rw [𝕏.zero_update]
-        refine ⟨df, ?_, ?_⟩
-        · intro x dx
-          change (x ⨁[𝕏] dx, y ⨁[𝕐] dy) =
-            (x ⨁[𝕏] dx ⨁[𝕏] 𝟬[𝕏] (x ⨁[𝕏] dx), y ⨁[𝕐] dy)
-          rw [𝕏.zero_update]
-        · rw [upd_eq]
-          refine ⟨fun _ _ h => Prod.mk_le_mk.mpr ⟨h, le_rfl⟩, ?_⟩
-          exact ⟨fun x => PartOrd.ofHom ⟨fun dx => (dx, 𝟬[𝕐] (y ⨁[𝕐] dy)),
-            fun _ _ h => Prod.mk_le_mk.mpr ⟨h, le_rfl⟩⟩,
-            fun x dx => Prod.ext rfl (𝕐.zero_update (y ⨁[𝕐] dy)).symm⟩
-      · intro _ _ h _ _
-        exact Prod.mk_le_mk.mpr ⟨le_rfl, h⟩
+    refine ⟨fun y => PartOrd.ofHom ⟨fun dy => ?_, ?_⟩, ?_⟩
+    · set f : 𝕏.X ⟶ (𝕏.prod 𝕐).X :=
+        PartOrd.ofHom ⟨fun x => (x, y), fun _ _ hx => ⟨hx, le_rfl⟩⟩
+      let df : ∀ x : 𝕏.X, 𝕏.Δ x ⟶ (𝕏.prod 𝕐).Δ (f x) :=
+        fun x => PartOrd.ofHom ⟨fun dx => (dx, dy), fun _ _ h => ⟨h, le_rfl⟩⟩
+      refine ⟨df, fun x dx => ?_, ⟨?_, ⟨fun x => ?_, ?_⟩⟩, ?_⟩
+      · change (x ⨁[𝕏] dx, y ⨁[𝕐] dy) = (x ⨁[𝕏] dx ⨁[𝕏] 𝟬[𝕏] (x ⨁[𝕏] dx), y ⨁[𝕐] dy)
+        rw [𝕏.zero_update]
+      · exact PartOrd.ofHom ⟨fun x => (x, y ⨁[𝕐] dy), fun _ _ h => ⟨h, le_rfl⟩⟩
+      · exact PartOrd.ofHom ⟨fun dx => (dx, 𝟬[𝕐] (y ⨁[𝕐] dy)), fun _ _ h => ⟨h, le_rfl⟩⟩
+      · exact fun _ _ => Prod.ext rfl (𝕐.zero_update (y ⨁[𝕐] dy)).symm
+      · ext x
+        change (x ⨁[𝕏] 𝟬[𝕏] x, y ⨁[𝕐] dy) = (x, y ⨁[𝕐] dy)
+        rw [𝕏.zero_update]
+    · intro _ _ h _ _
+      exact ⟨le_rfl, h⟩
     · intro y dy
       apply Hom.ext
-      apply PartOrd.ext
-      intro x
+      ext x
       exact Prod.ext (𝕏.zero_update x).symm rfl
 
 noncomputable def tensorProductAdjunction (𝕏 : Change) :
