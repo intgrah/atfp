@@ -6,7 +6,6 @@ public import Mathlib.SetTheory.Cardinal.Finite
 import Mathlib.Data.Finite.Prod
 import Mathlib.Data.Finite.Sum
 
-public import Atfp.Chapter3
 import Atfp.Chapter4.Section1
 public import Atfp.Chapter4.Section3
 public import Atfp.Chapter4.Section4.Datafun
@@ -171,8 +170,7 @@ theorem FinTy.nat_card_eq : ∀ T : FinTy, Nat.card 〚T〛 = T.card
     rw [@Nat.card_sum _ _ T₁.instFinite T₂.instFinite, T₁.nat_card_eq, T₂.nat_card_eq]
   | powerset T => by
     change Nat.card (Set 〚T〛) = 2 ^ T.card
-    rw [show Set 〚T〛 = (〚T〛 → Prop) from rfl, @Nat.card_fun _ _ T.instFinite,
-      T.nat_card_eq]
+    rw [show Set 〚T〛 = (〚T〛 → Prop) from rfl, @Nat.card_fun _ _ T.instFinite, T.nat_card_eq]
     simp [Nat.card_eq_fintype_card]
   | discrete T => T.nat_card_eq
 
@@ -185,8 +183,7 @@ theorem LatTy.nat_card_eq : ∀ L : LatTy, Nat.card 〚L〛 = L.card
     rw [Nat.card_prod, L₁.nat_card_eq, L₂.nat_card_eq]
   | powerset T => by
     change Nat.card (Set 〚T〛) = 2 ^ T.card
-    rw [show Set 〚T〛 = (〚T〛 → Prop) from rfl, @Nat.card_fun _ _ T.instFinite,
-      T.nat_card_eq]
+    rw [show Set 〚T〛 = (〚T〛 → Prop) from rfl, @Nat.card_fun _ _ T.instFinite, T.nat_card_eq]
     simp [Nat.card_eq_fintype_card]
 
 theorem LatTy.fix_isFixedPt {A : PartOrd} {L : LatTy}
