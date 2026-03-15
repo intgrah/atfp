@@ -167,9 +167,6 @@ def ev : A ⊗ of (A ⟶ B) ⟶ B :=
       (f₁.hom.monotone ha).trans (hf a₂)
   }
 
-def ev' : of (A ⟶ B) ⊗ A ⟶ B :=
-  prod_lift snd fst ≫ ev
-
 def coev : B ⟶ of (A ⟶ A.prod B) :=
   ofHom {
     toFun b := ofHom {

@@ -259,7 +259,7 @@ noncomputable def HasType.denotationC {Γ e A} : (Γ ⊢ e : A) → (〚Γ〛 �
   | abs_elim e₁ e₂ A B he₁ he₂ =>
     let f := 〚show Γ ⊢ e₁ : A.arr B from he₁〛
     let g := 〚show Γ ⊢ e₂ : A from he₂〛
-    prod_lift f g ≫ ev'
+    prod_lift g f ≫ ev
   | coprod_intro₁ e A₁ A₂ he =>
     〚show Γ ⊢ e : A₁ from he〛 ≫ inl
   | coprod_intro₂ e A₁ A₂ he =>

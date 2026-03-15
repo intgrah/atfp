@@ -574,9 +574,6 @@ noncomputable def tensorProductAdjunction (𝕏 : Change) :
     counit.app _ := ev
   }
 
-noncomputable def ev' : (exp 𝕏 𝕐).prod 𝕏 ⟶ 𝕐 :=
-  prod_lift snd fst ≫ ev
-
 noncomputable def curry_left (f : 𝕏.prod 𝕐 ⟶ 𝕫) : 𝕏 ⟶ exp 𝕐 𝕫 :=
   coev ≫ (expFunctor 𝕐).map (prod_lift snd fst ≫ f)
 
