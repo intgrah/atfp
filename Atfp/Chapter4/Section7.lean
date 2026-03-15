@@ -20,7 +20,7 @@ universe u
 open Change
 
 set_option hygiene false in
-notation "〚" A "〛" => FinTy.denotationC A
+scoped [Change] notation "〚" A "〛" => FinTy.denotationC A
 
 def FinTy.denotationC : FinTy.{u} → Change.{u}
   | 1 => 𝟙_ Change
@@ -30,7 +30,7 @@ def FinTy.denotationC : FinTy.{u} → Change.{u}
   | discrete T => [〚T〛]ᵈ
 
 set_option hygiene false in
-notation "〚" A "〛" => Ty.denotationC A
+scoped [Change] notation "〚" A "〛" => Ty.denotationC A
 
 noncomputable def Ty.denotationC : Ty.{u} → Change.{u}
   | 1 => 𝟙_ Change
@@ -201,7 +201,7 @@ theorem LatTy.fixC_isFixedPt {𝕏 : Change} {L : LatTy}
   sorry
 
 set_option hygiene false in
-notation "〚" Γ "〛" => Ctx.denotationC Γ
+scoped [Change] notation "〚" Γ "〛" => Ctx.denotationC Γ
 
 noncomputable def Ctx.denotationC : Ctx.{u} → Change.{u}
   | [] => 𝟙_ Change
@@ -239,7 +239,7 @@ noncomputable def Ctx.δC (Δ : Ctx)
       |>.elim
 
 set_option hygiene false in
-notation "〚" h "〛" => HasType.denotationC h
+scoped [Change] notation "〚" h "〛" => HasType.denotationC h
 
 open Ctx (dropC δC) in
 noncomputable def HasType.denotationC {Γ e A} : (Γ ⊢ e : A) → (〚Γ〛 ⟶ 〚A〛)

@@ -21,7 +21,7 @@ universe u
 open PartOrd
 
 set_option hygiene false in
-notation "〚" A "〛" => FinTy.denotation A
+scoped [PartOrd] notation "〚" A "〛" => FinTy.denotation A
 
 def FinTy.denotation : FinTy.{u} → PartOrd.{u}
   | 1 => 𝟙_ PartOrd
@@ -31,7 +31,7 @@ def FinTy.denotation : FinTy.{u} → PartOrd.{u}
   | discrete T => [〚T〛]ᵈ
 
 set_option hygiene false in
-notation "〚" A "〛" => Ty.denotation A
+scoped [PartOrd] notation "〚" A "〛" => Ty.denotation A
 
 def Ty.denotation : Ty.{u} → PartOrd.{u}
   | 1 => 𝟙_ PartOrd
@@ -195,7 +195,7 @@ theorem LatTy.fix_isFixedPt {A : PartOrd} {L : LatTy}
   exact h
 
 set_option hygiene false in
-notation "〚" Γ "〛" => Ctx.denotation Γ
+scoped [PartOrd] notation "〚" Γ "〛" => Ctx.denotation Γ
 
 def Ctx.denotation : Ctx.{u} → PartOrd.{u}
   | [] => 𝟙_ PartOrd
@@ -230,7 +230,7 @@ def Ctx.δ (Δ : Ctx) (h : [Δ]ᵈ = Δ := by exact Ctx.disc.idem) : 〚Δ〛 �
       |>.elim
 
 set_option hygiene false in
-notation "〚" h "〛" => HasType.denotation h
+scoped [PartOrd] notation "〚" h "〛" => HasType.denotation h
 
 open Ctx (drop δ) in
 def HasType.denotation {Γ e A} : (Γ ⊢ e : A) → (〚Γ〛 ⟶ 〚A〛)
