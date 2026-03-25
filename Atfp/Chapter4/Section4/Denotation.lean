@@ -36,7 +36,7 @@ scoped [PartOrd] notation "〚" A "〛" => Ty.denotation A
 def Ty.denotation : Ty.{u} → PartOrd.{u}
   | 1 => 𝟙_ PartOrd
   | prod A B => 〚A〛 ⊗ 〚B〛
-  | arr A B => 〚A〛.exp 〚B〛
+  | arr A B => 〚A〛 ⟶[PartOrd] 〚B〛
   | coprod A B => 〚A〛.coprod 〚B〛
   | powerset T => of (Set 〚T〛)
   | discrete A => [〚A〛]ᵈ

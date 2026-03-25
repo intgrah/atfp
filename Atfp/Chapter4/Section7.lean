@@ -35,7 +35,7 @@ scoped [Change] notation "〚" A "〛" => Ty.denotationC A
 noncomputable def Ty.denotationC : Ty.{u} → Change.{u}
   | 1 => 𝟙_ Change
   | prod A B => 〚A〛 ⊗ 〚B〛
-  | arr A B => 〚A〛.exp 〚B〛
+  | arr A B => 〚A〛 ⟶[Change] 〚B〛
   | coprod A B => 〚A〛.coprod 〚B〛
   | powerset T => U.obj (Change.powerset.obj 〚T〛)
   | discrete A => [〚A〛]ᵈ
