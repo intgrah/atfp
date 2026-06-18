@@ -4,11 +4,11 @@ public import Mathlib.Algebra.Order.Kleene
 public import Mathlib.Algebra.Tropical.Basic
 public import Mathlib.Combinatorics.Digraph.Basic
 public import Mathlib.Data.ENat.Basic
+public import Mathlib.Data.Set.Semiring
 public import Mathlib.Topology.UnitInterval
 public import Mathlib.LinearAlgebra.Matrix.Defs
 import Mathlib.CategoryTheory.Category.Init
 import Mathlib.Computability.Language
-import Mathlib.Data.Set.Semiring
 
 @[expose] public section
 
@@ -199,22 +199,30 @@ instance : ClosedSemiring Bool where
     rw [Bool.or_eq_true] at h
     exact h (.inl hb)
 
--- TODO
-
 /-! Example 5.1.12 -/
 
+open Tropical in
 instance : ClosedSemiring (Tropical ℕ∞) where
-  kstar _ := Tropical.trop 0
+  toPartialOrder := inferInstanceAs (PartialOrder (Tropical ℕ∞)ᵒᵈ)
+  kstar _ := trop 0
   kstar_eq_one_add_mul_kstar a := by
-    cases a using Tropical.tropRec with | h a =>
+    cases a using tropRec with | h a =>
     cases a <;> rfl
   kstar_eq_one_add_kstar_mul a := by
-    cases a using Tropical.tropRec with | h a =>
+    cases a using tropRec with | h a =>
     cases a <;> rfl
   kstar_induction_left a b x h := by
-    sorry
+    change untrop x ≤ untrop (trop 0 * b)
+    have h' : untrop x ≤ untrop (b + a * x) := h
+    rw [untrop_mul, untrop_trop, zero_add]
+    rw [untrop_add] at h'
+    exact h'.trans (min_le_left _ _)
   kstar_induction_right a b x h := by
-    sorry
+    change untrop x ≤ untrop (b * trop 0)
+    have h' : untrop x ≤ untrop (b + x * a) := h
+    rw [untrop_mul, untrop_trop, add_zero]
+    rw [untrop_add] at h'
+    exact h'.trans (min_le_left _ _)
 
 /-! Example 5.1.13 -/
 

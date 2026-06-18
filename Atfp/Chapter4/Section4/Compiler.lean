@@ -22,18 +22,18 @@ def Env.disc {Γ : Ctx} : Env Γ → Env [Γ]ᵈ
   | .cons (q := .none) _ env => env.disc
 
 def FinTy.compile : FinTy → String
-  | .unit => "()"
-  | .prod T₁ T₂ => s!"({T₁.compile}, {T₂.compile})"
-  | .coprod T₁ T₂ => s!"(Either {T₁.compile} {T₂.compile})"
-  | .powerset T => s!"[{T.compile}]"
+  | 1 => "()"
+  | T₁ * T₂ => s!"({T₁.compile}, {T₂.compile})"
+  | T₁ + T₂ => s!"(Either {T₁.compile} {T₂.compile})"
+  | 𝒫' T => s!"[{T.compile}]"
   | .discrete T => T.compile
 
 def Ty.compile : Ty → String
-  | .unit => "()"
-  | .prod A B => s!"({A.compile}, {B.compile})"
+  | 1 => "()"
+  | A * B => s!"({A.compile}, {B.compile})"
   | .arr A B => s!"({A.compile} -> {B.compile})"
-  | .coprod A B => s!"(Either {A.compile} {B.compile})"
-  | .powerset T => s!"[{T.compile}]"
+  | A + B => s!"(Either {A.compile} {B.compile})"
+  | 𝒫 T => s!"[{T.compile}]"
   | .discrete A => A.compile
 
 def LatTy.compileBot : LatTy → String

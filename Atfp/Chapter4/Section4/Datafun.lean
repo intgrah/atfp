@@ -57,28 +57,35 @@ def Ctx.disc : Ctx → Ctx :=
 scoped instance : One Ty := ⟨Ty.unit⟩
 scoped instance : One FinTy := ⟨FinTy.unit⟩
 scoped instance : One LatTy := ⟨LatTy.unit⟩
+scoped instance : Mul Ty := ⟨Ty.prod⟩
+scoped instance : Mul FinTy := ⟨FinTy.prod⟩
+scoped instance : Mul LatTy := ⟨LatTy.prod⟩
+scoped instance : Add Ty := ⟨Ty.coprod⟩
+scoped instance : Add FinTy := ⟨FinTy.coprod⟩
 scoped notation "[" A "]ᵈ" => Ty.discrete A
 scoped notation "[" T "]ᵈ" => FinTy.discrete T
 scoped prefix:100 "𝒫 " => Ty.powerset
+scoped prefix:100 "𝒫' " => FinTy.powerset
+scoped prefix:100 "𝒫' " => LatTy.powerset
 
 def FinTy.toTy : FinTy → Ty
-  | .unit => .unit
-  | .prod T₁ T₂ => .prod T₁.toTy T₂.toTy
-  | .coprod T₁ T₂ => .coprod T₁.toTy T₂.toTy
-  | .powerset T => .powerset T
-  | .discrete T => .discrete T.toTy
+  | 1 => 1
+  | T₁ * T₂ => T₁.toTy * T₂.toTy
+  | T₁ + T₂ => T₁.toTy + T₂.toTy
+  | 𝒫' T => 𝒫 T
+  | [T]ᵈ => [T.toTy]ᵈ
 
 def LatTy.toTy : LatTy → Ty
-  | .unit => .unit
-  | .prod L₁ L₂ => .prod L₁.toTy L₂.toTy
-  | .powerset T => .powerset T
+  | 1 => 1
+  | L₁ * L₂ => L₁.toTy * L₂.toTy
+  | 𝒫' T => 𝒫 T
 
 def FinTy.card : FinTy → Nat
   | 1 => 1
-  | prod T₁ T₂ => T₁.card * T₂.card
-  | coprod T₁ T₂ => T₁.card + T₂.card
-  | powerset T => 2 ^ T.card
-  | discrete T => T.card
+  | T₁ * T₂ => T₁.card * T₂.card
+  | T₁ + T₂ => T₁.card + T₂.card
+  | 𝒫' T => 2 ^ T.card
+  | [T]ᵈ => T.card
 
 def LatTy.card : LatTy → Nat
   | .unit => 1
@@ -87,6 +94,7 @@ def LatTy.card : LatTy → Nat
 
 scoped instance : Coe LatTy Ty := ⟨LatTy.toTy⟩
 
+scoped instance : CoeFun Tm (fun _ => Tm → Tm) := ⟨Tm.app⟩
 scoped notation "π₁" => Tm.fst
 scoped notation "π₂" => Tm.snd
 scoped notation "ι₁" => Tm.inl
@@ -110,12 +118,12 @@ inductive HasType : Ctx → Tm → Ty → Type u
   | prod_intro {Γ} e₁ e₂ A₁ A₂ :
     (Γ ⊢ e₁ : A₁) →
     (Γ ⊢ e₂ : A₂) →
-    (Γ ⊢ e₁.prod e₂ : A₁.prod A₂)
+    (Γ ⊢ e₁.prod e₂ : A₁ * A₂)
   | prod_elim₁ {Γ} e A₁ A₂ :
-    (Γ ⊢ e : A₁.prod A₂) →
+    (Γ ⊢ e : A₁ * A₂) →
     (Γ ⊢ π₁ e : A₁)
-  | prod_elim₂ {Γ} e (A₁ A₂ : Ty) :
-    (Γ ⊢ e : A₁.prod A₂) →
+  | prod_elim₂ {Γ} e A₁ A₂ :
+    (Γ ⊢ e : A₁ * A₂) →
     (Γ ⊢ π₂ e : A₂)
   | abs_intro {Γ} e A B :
     (((.none, A) :: Γ) ⊢ e : B) →
@@ -123,13 +131,13 @@ inductive HasType : Ctx → Tm → Ty → Type u
   | abs_elim {Γ} e₁ e₂ A B :
     (Γ ⊢ e₁ : .arr A B) →
     (Γ ⊢ e₂ : A) →
-    (Γ ⊢ e₁.app e₂ : B)
+    (Γ ⊢ e₁ e₂ : B)
   | coprod_intro₁ {Γ} e A₁ A₂ :
     (Γ ⊢ e : A₁) →
-    (Γ ⊢ ι₁ e : .coprod A₁ A₂)
+    (Γ ⊢ ι₁ e : A₁ + A₂)
   | coprod_intro₂ {Γ} e A₁ A₂ :
     (Γ ⊢ e : A₂) →
-    (Γ ⊢ ι₂ e : .coprod A₁ A₂)
+    (Γ ⊢ ι₂ e : A₁ + A₂)
   | coprod_elim {Γ} e e₁ e₂ A₁ A₂ C :
     (Γ ⊢ e : .coprod A₁ A₂) →
     (((.none, A₁) :: Γ) ⊢ e₁ : C) →
