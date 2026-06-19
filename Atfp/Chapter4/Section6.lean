@@ -104,7 +104,7 @@ example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₀ := by
   tauto_set
 
 def f'₁ : ∀ _ : 𝒫ℕ, 𝒫ℕ ⟶ 𝒫ℕ := fun _ =>
-  PartOrd.ofHom ⟨fun dx => dx \ {1}, fun _ _ h => Set.diff_subset_diff_left h⟩
+  PartOrd.ofHom ⟨fun dx => dx \ {1}, fun _ _ h => Set.sdiff_subset_sdiff_left h⟩
 
 example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₁ := by
   intro (x : 𝒫ℕ) (dx : 𝒫ℕ)
@@ -112,17 +112,17 @@ example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₁ := by
   tauto_set
 
 def f'₂ : ∀ _ : 𝒫ℕ, 𝒫ℕ ⟶ 𝒫ℕ := fun _ =>
-  PartOrd.ofHom ⟨fun dx => dx \ {2}, fun _ _ h => Set.diff_subset_diff_left h⟩
+  PartOrd.ofHom ⟨fun dx => dx \ {2}, fun _ _ h => Set.sdiff_subset_sdiff_left h⟩
 
 example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₂ := by
   intro (x : 𝒫ℕ) (dx : 𝒫ℕ)
   change x ∪ dx ∪ {1, 2} = x ∪ {1, 2} ∪ dx \ {2}
   ext n
-  simp only [Set.mem_union, Set.mem_insert_iff, Set.mem_singleton_iff, Set.mem_diff]
+  simp only [Set.mem_union, Set.mem_insert_iff, Set.mem_singleton_iff, Set.mem_sdiff]
   tauto
 
 def f'₃ : ∀ _ : 𝒫ℕ, 𝒫ℕ ⟶ 𝒫ℕ := fun _ =>
-  PartOrd.ofHom ⟨fun dx => dx \ {1, 2}, fun _ _ h => Set.diff_subset_diff_left h⟩
+  PartOrd.ofHom ⟨fun dx => dx \ {1, 2}, fun _ _ h => Set.sdiff_subset_sdiff_left h⟩
 
 example : @IsDerivative 𝒫ℕ' 𝒫ℕ' f f'₃ := by
   intro (x : 𝒫ℕ) (dx : 𝒫ℕ)
@@ -196,7 +196,7 @@ theorem semifix_fix
   open OmegaCompletePartialOrder in
   rw [ωScottContinuous_iff_monotone_map_ωSup]
   refine ⟨f.hom.monotone, fun c => ?_⟩
-  obtain ⟨n, hn⟩ := WellFoundedGT.monotone_chain_condition c
+  have ⟨n, hn⟩ := WellFoundedGT.monotone_chain_condition c.toOrderHom
   apply le_antisymm
   · have hsup : ωSup c = c n := by
       apply le_antisymm
@@ -495,7 +495,7 @@ noncomputable def expFunctor (𝕏 : Change) : Change ⥤ Change where
         exact hf' (g x) (df x (𝟬[𝕏] x))
   }
 
-def ev : 𝕏 ⊗ 𝕏.exp 𝕐 ⟶ 𝕐 where
+noncomputable def ev : 𝕏 ⊗ 𝕏.exp 𝕐 ⟶ 𝕐 where
   base := PartOrd.ofHom {
     toFun := fun (x, f) => f.base x
     monotone' := fun (_, f₁) (x₂, _) ⟨hx, hf⟩ =>
