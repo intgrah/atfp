@@ -1,6 +1,6 @@
 module
 
-import Atfp.Chapter4.Section4.Datafun
+import Atfp.Chapter4.Section4.Compiler
 
 namespace Datafun
 

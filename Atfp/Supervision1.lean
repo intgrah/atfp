@@ -364,7 +364,7 @@ def Split.hylo
 
 theorem Split.coalg_wf :
     WellFounded fun (x y : List α × List α) => Child (Split.coalg.str y) x := by
-  apply Subrelation.wf (r := InvImage (· < ·) fun s => s.1.length + s.2.length)
+  apply Subrelation.wf (r := InvImage (· < ·) fun ⟨s₁, s₂⟩ => s₁.length + s₂.length)
   · rintro a ⟨_ | _, _ | _⟩ hab
     · nomatch hab
     · nomatch hab
@@ -382,7 +382,7 @@ def lev₂ : List α × List α → ℕ := Split.hylo Split.coalg Split.coalg_wf
 #guard_msgs in
 #eval lev₂ ([1, 2, 3], [1, 2, 3])
 
-def Split.mapChildM {R S : Type} {m : Type → Type} [Monad m] :
+def Split.mapChildM {R S : Type} {m : Type → Type} [Applicative m] :
     (node : obj α R) → ((x : R) → Child node x → m S) → m (obj α S)
   | .inl s₁, _ => pure (.inl s₁)
   | .inr s₂, _ => pure (.inr s₂)
@@ -396,7 +396,7 @@ def Split.memo
     coalg.V → alg.a :=
   fun x => (go x).run' ∅
   where go : coalg.V → StateM (Std.HashMap coalg.V alg.a) alg.a :=
-    wf.fix (C := fun _ => StateM (Std.HashMap coalg.V alg.a) alg.a) fun v ih => do
+    wf.fix fun v ih => do
       match (← get)[v]? with
       | some r => return r
       | none =>
