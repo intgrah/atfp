@@ -756,8 +756,8 @@ instance : Add I where
   add a b := ⟨max a.1 b.1, by aesop⟩
 
 instance : AddCommMonoid I where
-  zero_add a := max_eq_right zero_le'
-  add_zero a := max_eq_left zero_le'
+  zero_add a := max_eq_right zero_le
+  add_zero a := max_eq_left zero_le
   add_assoc a b c := Subtype.ext (max_assoc a.1 b.1 c.1)
   add_comm a b := Subtype.ext (max_comm a.1 b.1)
   nsmul := nsmulRec
