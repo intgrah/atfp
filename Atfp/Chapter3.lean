@@ -53,9 +53,17 @@ namespace Section2
 
 def N : Type u ⥤ Type u where
   obj X := PUnit ⊕ X
-  map := Sum.map id
-  map_id := by intro; funext x; cases x <;> rfl
-  map_comp := by intros; funext x; cases x <;> rfl
+  map f := ↾Sum.map id f
+  map_id := by
+    intro
+    apply ConcreteCategory.hom_ext
+    intro x
+    cases x <;> rfl
+  map_comp := by
+    intros
+    apply ConcreteCategory.hom_ext
+    intro x
+    cases x <;> rfl
 
 def D.Obj : ℕ → Type u
   | 0 => PEmpty
@@ -92,15 +100,17 @@ private theorem D.mapLE_trans {a b c : ℕ} (hab : a ≤ b) (hbc : b ≤ c) (x :
 
 def D : ℕ ⥤ Type u where
   obj := D.Obj
-  map {m n} f := D.mapLE f.down.down
+  map {m n} f := ↾D.mapLE f.down.down
   map_id n := by
-    ext x
+    apply ConcreteCategory.hom_ext
+    intro x
     simp only [types_id_apply]
-    cases n with
-    | zero => simp [D.mapLE]
-    | succ n => simp [D.mapLE]
-  map_comp {a b c} f g := by
-    ext x
+    match n, x with
+    | 0, x => nomatch x
+    | n + 1, x => simp [D.mapLE]
+  map_comp f g := by
+    apply ConcreteCategory.hom_ext
+    intro x
     simp only [types_comp_apply]
     exact D.mapLE_trans f.down.down g.down.down x
 
@@ -116,8 +126,8 @@ def out : μN → N.obj μN
   | .succ n => .inr n
 
 def iso : μN ≅ N.obj μN where
-  hom := out
-  inv := in'
+  hom := ↾out
+  inv := ↾in'
   hom_inv_id := by ext (_ | _) <;> rfl
   inv_hom_id := by ext (_ | _) <;> rfl
 
@@ -132,7 +142,7 @@ example : Nat.foldO f (Nat.succ k) = f (.inr (Nat.foldO f k)) := rfl
 example : Nat.foldO f (in' (.inl ())) = f (.inl ()) := rfl
 example : Nat.foldO f (in' (.inr k)) = f (.inr (Nat.foldO f k)) := rfl
 
-def Nat.foldO_str {α} {f : Unit ⊕ α → α} : Nat.foldO f ∘ in' = f ∘ N.map (Nat.foldO f) := by
+def Nat.foldO_str {α} {f : Unit ⊕ α → α} : Nat.foldO f ∘ in' = f ∘ N.map (↾Nat.foldO f) := by
   ext (_ | _) <;> rfl
 
 /-! Definition 3.2.1 -/
@@ -148,64 +158,66 @@ variable (X Y : Algebra N) (f : X ⟶ Y)
 
 def initial : Algebra N where
   a := μN
-  str := in'
+  str := ↾in'
 
 def initial.isInitial : IsInitial initial :=
   IsInitial.ofUniqueHom
-    (fun ⟨A, f⟩ => ⟨Nat.foldO f, Nat.foldO_str.symm⟩) <| by
+    (fun ⟨A, f⟩ => ⟨↾Nat.foldO f, by ext (_ | _) <;> rfl⟩) <| by
     -- Suppose that we have another map h
     intro ⟨A, f⟩ ⟨h, hh⟩
     congr 1
     -- We establish uniqueness by showing that necessarily h = Nat.foldO f
-    change h = Nat.foldO f
+    change h = ↾Nat.foldO f
     -- Observe that because h is an algebra morphism, we know that
     change N.map h ≫ f = initial.str ≫ h at hh
     -- or equivalently
-    change f ∘ N.map h = h ∘ initial.str at hh
+    replace hh : ⇑f ∘ ⇑(N.map h) = ⇑h ∘ in' := by
+      funext x; exact ConcreteCategory.congr_hom hh x
     -- Because in' and out form an isomorphism
-    have : in' ∘ out = id := iso.hom_inv_id
+    have : in' ∘ out = id := by
+      funext x; exact ConcreteCategory.congr_hom iso.hom_inv_id x
     -- we also know that
     have h₁ :=
-      calc f ∘ N.map h ∘ out
-        _ = h ∘ in' ∘ out := congrArg (· ∘ out) hh
-        _ = h ∘ id := congrArg (h ∘ ·) this
-        _ = h := Function.comp_id h
+      calc ⇑f ∘ ⇑(N.map h) ∘ out
+        _ = ⇑h ∘ in' ∘ out := congrArg (· ∘ out) hh
+        _ = ⇑h ∘ id := congrArg (⇑h ∘ ·) this
+        _ = ⇑h := Function.comp_id ⇑h
     -- Similarly
     have h₂ :=
-      calc f ∘ N.map (Nat.foldO f) ∘ out
+      calc ⇑f ∘ ⇑(N.map (↾Nat.foldO f)) ∘ out
         _ = Nat.foldO f ∘ in' ∘ out := congrArg (· ∘ out) Nat.foldO_str.symm
         _ = Nat.foldO f ∘ id := congrArg (Nat.foldO f ∘ ·) this
         _ = Nat.foldO f := Function.comp_id (Nat.foldO f)
     -- Now we show that for all x : μN, we have that h x = Nat.foldO f x
     ext (x : μN)
-    show h x = Nat.foldO f x
+    change ⇑h x = Nat.foldO f x
     -- We first note that x : μN means that there exists an n : ℕ such that x : N.obj^[n] 0
     -- have : ∃ n : ℕ, x = n := ⟨x, rfl⟩
     induction x with
     | zero =>
-      calc h .zero
-        _ = (f ∘ N.map h ∘ out) .zero := by rw [h₁]
-        _ = (f ∘ N.map h) (out .zero) := rfl
-        _ = (f ∘ N.map h) (.inl ()) := rfl
-        _ = f (N.map h (.inl ())) := rfl
-        _ = f (.inl ()) := rfl
-        _ = f (N.map (Nat.foldO f) (.inl ())) := rfl
-        _ = (f ∘ N.map (Nat.foldO f)) (.inl ()) := rfl
-        _ = (f ∘ N.map (Nat.foldO f)) (out .zero) := rfl
-        _ = (f ∘ N.map (Nat.foldO f) ∘ out) .zero := rfl
+      calc ⇑h .zero
+        _ = (⇑f ∘ ⇑(N.map h) ∘ out) .zero := by rw [h₁]
+        _ = (⇑f ∘ ⇑(N.map h)) (out .zero) := rfl
+        _ = (⇑f ∘ ⇑(N.map h)) (.inl ()) := rfl
+        _ = ⇑f (⇑(N.map h) (.inl ())) := rfl
+        _ = ⇑f (.inl ()) := rfl
+        _ = ⇑f (⇑(N.map (↾Nat.foldO f)) (.inl ())) := rfl
+        _ = (⇑f ∘ ⇑(N.map (↾Nat.foldO f))) (.inl ()) := rfl
+        _ = (⇑f ∘ ⇑(N.map (↾Nat.foldO f))) (out .zero) := rfl
+        _ = (⇑f ∘ ⇑(N.map (↾Nat.foldO f)) ∘ out) .zero := rfl
         _ = Nat.foldO f .zero := rfl
     | succ k ih =>
-      calc h (.succ k)
-        _ = (f ∘ N.map h ∘ out) (.succ k) := by rw [h₁]
-        _ = (f ∘ N.map h) (out (.succ k)) := rfl
-        _ = (f ∘ N.map h) (.inr k) := rfl
-        _ = f (N.map h (.inr k)) := rfl
-        _ = f (.inr (h k)) := rfl
-        _ = f (.inr (Nat.foldO f k)) := by rw [ih]
-        _ = f (N.map (Nat.foldO f) (.inr k)) := rfl
-        _ = (f ∘ N.map (Nat.foldO f)) (.inr k) := rfl
-        _ = (f ∘ N.map (Nat.foldO f)) (out (.succ k)) := rfl
-        _ = (f ∘ N.map (Nat.foldO f) ∘ out) (.succ k) := rfl
+      calc ⇑h (.succ k)
+        _ = (⇑f ∘ ⇑(N.map h) ∘ out) (.succ k) := by rw [h₁]
+        _ = (⇑f ∘ ⇑(N.map h)) (out (.succ k)) := rfl
+        _ = (⇑f ∘ ⇑(N.map h)) (.inr k) := rfl
+        _ = ⇑f (⇑(N.map h) (.inr k)) := rfl
+        _ = ⇑f (.inr (⇑h k)) := rfl
+        _ = ⇑f (.inr (Nat.foldO f k)) := by rw [ih]
+        _ = ⇑f (⇑(N.map (↾Nat.foldO f)) (.inr k)) := rfl
+        _ = (⇑f ∘ ⇑(N.map (↾Nat.foldO f))) (.inr k) := rfl
+        _ = (⇑f ∘ ⇑(N.map (↾Nat.foldO f))) (out (.succ k)) := rfl
+        _ = (⇑f ∘ ⇑(N.map (↾Nat.foldO f)) ∘ out) (.succ k) := rfl
         _ = Nat.foldO f (.succ k) := rfl
 
 end Section2
@@ -232,7 +244,7 @@ def TreeF.map (f : α → β) : TreeF α → TreeF β
 
 def T : Type u ⥤ Type u where
   obj X := Sum Bool (X × X)
-  map f := Sum.map id (Prod.map f f)
+  map f := ↾Sum.map id (Prod.map f f)
 
 def in' : TreeF TreeB → TreeB
   | .leaf b => .leaf b
@@ -254,7 +266,7 @@ decreasing_by
       obtain ⟨rfl⟩ := _h
       decreasing_tactic
 
-unsafe def fold2 (f : TreeF α → α) : TreeB → α := (out ≫ TreeF.map (fold2 f) ≫ f : TreeB ⟶ α)
+unsafe def fold2 (f : TreeF α → α) : TreeB → α := ↾out ≫ ↾TreeF.map (fold2 f) ≫ ↾f
 
 end Section3
 
@@ -286,22 +298,22 @@ def μ (F : PolynomialFunctor.{u}) :=
 
 def monotone {α β} (F : PolynomialFunctor) (f : α ↪ β) :
     〚F〛.obj α ↪ 〚F〛.obj β where
-  toFun := 〚F〛.map f
+  toFun := 〚F〛.map (↾f)
   inj' := by
     induction F with
     | id => exact f.injective
     | const A => intro x y h; exact h
     | prod F G ihF ihG =>
       intro ⟨a₁, b₁⟩ ⟨a₂, b₂⟩ h
-      simp only [denotation, FunctorToTypes.prod, Prod.mk.injEq] at h ⊢
-      exact ⟨ihF h.1, ihG h.2⟩
+      simp only [denotation, FunctorToTypes.prod_map] at h
+      have ⟨h₁, h₂⟩ := Prod.mk.inj h
+      exact Prod.ext (ihF h₁) (ihG h₂)
     | coprod F G ihF ihG =>
       rintro (a₁ | a₂) (b₁ | b₂) h
-      all_goals
-        simp only [denotation, FunctorToTypes.coprod, reduceCtorEq,
-          Sum.inl.injEq, Sum.inr.injEq] at h
-      · exact congrArg Sum.inl (ihF h)
-      · exact congrArg Sum.inr (ihG h)
+      · exact congrArg Sum.inl (ihF (Sum.inl.inj h))
+      · exact (Sum.inl_ne_inr h).elim
+      · exact (Sum.inr_ne_inl h).elim
+      · exact congrArg Sum.inr (ihG (Sum.inr.inj h))
 
 /-! Lemma 3.4.3 -/
 
@@ -326,7 +338,7 @@ structure Inductive (F : Type u ⥤ Type u) where
 variable {F : Type u ⥤ Type u} (I : Inductive F)
 
 def Inductive.fold {α} (alg : F.obj α → α) : I.alg.a → α :=
-  (I.isInitial.to ⟨α, alg⟩).f
+  (I.isInitial.to ⟨α, ↾alg⟩).f
 
 def Inductive.into : F.obj I.alg.a → I.alg.a := I.alg.str
 
@@ -387,7 +399,7 @@ lemma PolynomialFunctor.preserves_eq {A : Type u} :
 lemma PolynomialFunctor.preserves_function {A B X Y : Type u}
     {R : Rel A X} {S : Rel B Y} {f : A → B} {g : X → Y}
     (h : (Rel.function R S) f g) :
-    (Rel.function (F.ℛ R) (F.ℛ S)) (〚F〛.map f) (〚F〛.map g) := by
+    (Rel.function (F.ℛ R) (F.ℛ S)) (〚F〛.map (↾f)) (〚F〛.map (↾g)) := by
   induction F with
   | id => exact h
   | const C => intro a b hab; exact hab
@@ -457,7 +469,7 @@ instance PolynomialFunctor.preorder : Preorder (〚F〛.obj X) where
 
 /-! Lemma 3.10.4 -/
 
-lemma PolynomialFunctor.preserves_monotone (f : X →o Y) : Monotone (〚F〛.map f.toFun) := by
+lemma PolynomialFunctor.preserves_monotone (f : X →o Y) : Monotone ⇑(〚F〛.map (↾f)) := by
   induction F with
   | id =>
     intro a b hab
