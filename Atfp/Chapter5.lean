@@ -7,6 +7,10 @@ public import Mathlib.Data.ENat.Basic
 public import Mathlib.Data.Set.Semiring
 public import Mathlib.Topology.UnitInterval
 public import Mathlib.LinearAlgebra.Matrix.Defs
+public import Mathlib.Data.Matrix.Block
+import Mathlib.Data.Matrix.ColumnRowPartitioned
+import Mathlib.Logic.Equiv.Fin.Basic
+import Mathlib.Algebra.BigOperators.Fin
 import Mathlib.CategoryTheory.Category.Init
 import Mathlib.Computability.Language
 
@@ -115,7 +119,45 @@ class ClosedSemiring (α : Type u) extends Semiring α, PartialOrder α, KStar �
 
 /-! Example 5.1.10 -/
 
--- TODO monoid powerset
+open scoped Pointwise in
+noncomputable instance : ClosedSemiring (SetSemiring M) where
+  kstar A := (⋃ n, A.down ^ n).up
+  kstar_eq_one_add_mul_kstar a := by
+    apply SetSemiring.down.injective
+    simp only [SetSemiring.down_up, SetSemiring.down_add, SetSemiring.down_mul]
+    change (⋃ n, a.down ^ n) = 1 ∪ a.down * ⋃ n, a.down ^ n
+    rw [Set.mul_iUnion]
+    simp_rw [← pow_succ']
+    rw [← pow_zero a.down, Set.union_iUnion_nat_succ fun n => a.down ^ n]
+  kstar_eq_one_add_kstar_mul a := by
+    apply SetSemiring.down.injective
+    simp only [SetSemiring.down_up, SetSemiring.down_add, SetSemiring.down_mul]
+    change (⋃ n, a.down ^ n) = 1 ∪ (⋃ n, a.down ^ n) * a.down
+    rw [Set.iUnion_mul]
+    simp_rw [← pow_succ]
+    rw [← pow_zero a.down, Set.union_iUnion_nat_succ fun n => a.down ^ n]
+  kstar_induction_left a b x h := by
+    rw [← SetSemiring.down_subset_down, SetSemiring.down_add, SetSemiring.down_mul] at h
+    rw [← SetSemiring.down_subset_down, SetSemiring.down_mul]
+    change (⋃ n, a.down ^ n) * b.down ⊆ x.down
+    rw [Set.iUnion_mul]
+    have ⟨hb, hax⟩ := Set.union_subset_iff.mp h
+    apply Set.iUnion_subset
+    intro n
+    induction n with
+    | zero => rw [pow_zero, one_mul]; exact hb
+    | succ n ih => rw [pow_succ', mul_assoc]; exact (Set.mul_subset_mul_left ih).trans hax
+  kstar_induction_right a b x h := by
+    rw [← SetSemiring.down_subset_down, SetSemiring.down_add, SetSemiring.down_mul] at h
+    rw [← SetSemiring.down_subset_down, SetSemiring.down_mul]
+    change b.down * (⋃ n, a.down ^ n) ⊆ x.down
+    rw [Set.mul_iUnion]
+    have ⟨hb, hxa⟩ := Set.union_subset_iff.mp h
+    apply Set.iUnion_subset
+    intro n
+    induction n with
+    | zero => rw [pow_zero, mul_one]; exact hb
+    | succ n ih => rw [pow_succ, ← mul_assoc]; exact (Set.mul_subset_mul_right ih).trans hxa
 
 /-! Example 5.1.11 -/
 
@@ -288,13 +330,9 @@ variable {S : Type u} [inst : KleeneAlgebra S]
 
 example : ¬∃ ka : KleeneAlgebra ℕ∞, ka.toSemiring = instCommSemiringENat.toSemiring := by
   intro ⟨kleene, ha⟩
-  have h₁ : (3 : ℕ∞) + 3 = 6 := rfl
-  have h₂ := @add_idem _ kleene.toIdemSemiring (3 : ℕ∞)
-  have heq : (@HAdd.hAdd ℕ∞ ℕ∞ ℕ∞ (@instHAdd ℕ∞ kleene.toIdemSemiring.toDistrib.toAdd) 3 3 = 3) =
-             (@HAdd.hAdd ℕ∞ ℕ∞ ℕ∞ (@instHAdd ℕ∞ instCommSemiringENat.toDistrib.toAdd) 3 3 = 3) := by
-    rw [ha]
-  have h₂' : (3 : ℕ∞) + 3 = 3 := cast heq h₂
-  exact absurd (h₁.symm.trans h₂') (by decide)
+  have h := @add_idem _ kleene.toIdemSemiring (3 : ℕ∞)
+  rw [ha] at h
+  exact absurd h (by decide)
 
 /-! Example 5.1.19 -/
 
@@ -320,7 +358,356 @@ end Section2
 
 section Section3
 
-variable {S M N : Type*} [ClosedSemiring S]
+open Matrix
+
+variable {S : Type u} [ClosedSemiring S]
+
+/-! Theorem 5.3.1 -/
+
+theorem ClosedSemiring.zero_le (x : S) : 0 ≤ x := by
+  simpa using ClosedSemiring.kstar_induction_left 1 0 x (by simp)
+
+instance Matrix.instPartialOrder {α β : Type*} : PartialOrder (Matrix α β S) :=
+  Pi.partialOrder
+
+open scoped Computability in
+noncomputable def Matrix.scalarStar (D : Matrix (Fin 1) (Fin 1) S) : Matrix (Fin 1) (Fin 1) S :=
+  of fun _ _ => (D 0 0)∗
+
+noncomputable def Matrix.cstar : {n : ℕ} → Matrix (Fin n) (Fin n) S → Matrix (Fin n) (Fin n) S
+  | 0, M => M
+  | n + 1, M =>
+    let e := finSumFinEquiv (m := n) (n := 1)
+    let M' := reindex e.symm e.symm M
+    let Ds := scalarStar M'.toBlocks₂₂
+    let Fs := cstar (M'.toBlocks₁₁ + M'.toBlocks₁₂ * Ds * M'.toBlocks₂₁)
+    reindex e e (fromBlocks Fs (Fs * M'.toBlocks₁₂ * Ds) (Ds * M'.toBlocks₂₁ * Fs)
+      (Ds + Ds * M'.toBlocks₂₁ * Fs * M'.toBlocks₁₂ * Ds))
+
+section Plumbing
+
+variable {κ ι γ δ : Type*}
+
+private theorem Matrix.le_def {M N : Matrix γ δ S} : M ≤ N ↔ ∀ i j, M i j ≤ N i j :=
+  Iff.rfl
+
+private theorem Matrix.submatrix_le_submatrix {M N : Matrix γ δ S} (f : κ → γ) (g : ι → δ)
+    (h : M ≤ N) : M.submatrix f g ≤ N.submatrix f g :=
+  fun i j => h (f i) (g j)
+
+private theorem Matrix.le_of_submatrix_le (e₁ : κ ≃ γ) (e₂ : ι ≃ δ) {M N : Matrix γ δ S}
+    (h : M.submatrix e₁ e₂ ≤ N.submatrix e₁ e₂) : M ≤ N :=
+  fun i j => by simpa using h (e₁.symm i) (e₂.symm j)
+
+private theorem Matrix.fromRows_le {A₁ B₁ : Matrix κ δ S} {A₂ B₂ : Matrix ι δ S}
+    (h₁ : A₁ ≤ B₁) (h₂ : A₂ ≤ B₂) : fromRows A₁ A₂ ≤ fromRows B₁ B₂ := fun i j =>
+  match i with
+  | .inl k => h₁ k j
+  | .inr k => h₂ k j
+
+private theorem Matrix.fromCols_le {A₁ B₁ : Matrix γ κ S} {A₂ B₂ : Matrix γ ι S}
+    (h₁ : A₁ ≤ B₁) (h₂ : A₂ ≤ B₂) : fromCols A₁ A₂ ≤ fromCols B₁ B₂ := fun i j =>
+  match j with
+  | .inl k => h₁ i k
+  | .inr k => h₂ i k
+
+private theorem Matrix.reindex_one [DecidableEq κ] [DecidableEq γ] (e : κ ≃ γ) :
+    reindex e e (1 : Matrix κ κ S) = 1 := by
+  rw [reindex_apply, submatrix_one_equiv]
+
+private theorem Matrix.reindex_add (e : κ ≃ γ) (X Y : Matrix κ κ S) :
+    reindex e e (X + Y) = reindex e e X + reindex e e Y :=
+  rfl
+
+private theorem Matrix.reindex_mul [Fintype κ] [Fintype γ] (e : κ ≃ γ) (X Y : Matrix κ κ S) :
+    reindex e e (X * Y) = reindex e e X * reindex e e Y := by
+  rw [reindex_apply, reindex_apply, reindex_apply, submatrix_mul_equiv]
+
+private theorem Matrix.reindex_unfold_left [Fintype κ] [Fintype γ] [DecidableEq κ]
+    [DecidableEq γ] (e : κ ≃ γ) {M : Matrix γ γ S} {T : Matrix κ κ S}
+    (h : T = 1 + reindex e.symm e.symm M * T) :
+    reindex e e T = 1 + M * reindex e e T := by
+  conv_lhs => rw [h]
+  rw [reindex_add, reindex_mul, reindex_one, ← reindex_symm, Equiv.apply_symm_apply]
+
+private theorem Matrix.reindex_unfold_right [Fintype κ] [Fintype γ] [DecidableEq κ]
+    [DecidableEq γ] (e : κ ≃ γ) {M : Matrix γ γ S} {T : Matrix κ κ S}
+    (h : T = 1 + T * reindex e.symm e.symm M) :
+    reindex e e T = 1 + reindex e e T * M := by
+  conv_lhs => rw [h]
+  rw [reindex_add, reindex_mul, reindex_one, ← reindex_symm, Equiv.apply_symm_apply]
+
+private theorem Matrix.reindex_mul_le {m : Type} [Fintype κ] [Fintype γ] (e : κ ≃ γ)
+    {W : Matrix κ κ S} {N X : Matrix γ m S}
+    (h : W * N.submatrix ⇑e id ≤ X.submatrix ⇑e id) :
+    reindex e e W * N ≤ X := by
+  refine le_of_submatrix_le e (Equiv.refl m) ?_
+  rwa [Equiv.coe_refl, ← submatrix_mul_equiv (reindex e e W) N ⇑e e id, reindex_apply,
+    submatrix_submatrix, Equiv.symm_comp_self, submatrix_id_id]
+
+private theorem Matrix.reindex_le_mul {m : Type} [Fintype κ] [Fintype γ] (e : κ ≃ γ)
+    {W : Matrix κ κ S} {N X : Matrix m γ S}
+    (h : N.submatrix id ⇑e * W ≤ X.submatrix id ⇑e) :
+    N * reindex e e W ≤ X := by
+  refine le_of_submatrix_le (Equiv.refl m) e ?_
+  rwa [Equiv.coe_refl, ← submatrix_mul_equiv N (reindex e e W) id e ⇑e, reindex_apply,
+    submatrix_submatrix, Equiv.symm_comp_self, submatrix_id_id]
+
+end Plumbing
+
+section OrderedPlumbing
+
+variable [IsOrderedRing S] {γ δ ε : Type*}
+
+private theorem Matrix.le_add_left (M N : Matrix γ δ S) : M ≤ N + M := fun i j => by
+  simpa using add_le_add (ClosedSemiring.zero_le (N i j)) (le_refl (M i j))
+
+private theorem Matrix.add_le_add {M N P Q : Matrix γ δ S} (h₁ : M ≤ N) (h₂ : P ≤ Q) :
+    M + P ≤ N + Q :=
+  fun i j => _root_.add_le_add (h₁ i j) (h₂ i j)
+
+private theorem Matrix.mul_le_mul_left [Fintype δ] (A : Matrix γ δ S) {X Y : Matrix δ ε S}
+    (h : X ≤ Y) : A * X ≤ A * Y := by
+  refine Matrix.le_def.mpr fun i j => ?_
+  simp only [Matrix.mul_apply]
+  exact Finset.sum_le_sum fun k _ =>
+    mul_le_mul_of_nonneg_left (h k j) (ClosedSemiring.zero_le _)
+
+private theorem Matrix.mul_le_mul_right [Fintype δ] {X Y : Matrix γ δ S} (h : X ≤ Y)
+    (A : Matrix δ ε S) : X * A ≤ Y * A := by
+  refine Matrix.le_def.mpr fun i j => ?_
+  simp only [Matrix.mul_apply]
+  exact Finset.sum_le_sum fun k _ =>
+    mul_le_mul_of_nonneg_right (h i k) (ClosedSemiring.zero_le _)
+
+end OrderedPlumbing
+
+section ScalarStar
+
+variable {m : Type}
+
+private theorem Matrix.scalarStar_unfold_left (D : Matrix (Fin 1) (Fin 1) S) :
+    scalarStar D = 1 + D * scalarStar D := by
+  ext i j
+  obtain rfl : i = 0 := Subsingleton.elim i 0
+  obtain rfl : j = 0 := Subsingleton.elim j 0
+  simp only [scalarStar, of_apply, Matrix.add_apply, Matrix.one_apply_eq, Matrix.mul_apply,
+    Fin.sum_univ_one]
+  exact ClosedSemiring.kstar_eq_one_add_mul_kstar (D 0 0)
+
+private theorem Matrix.scalarStar_unfold_right (D : Matrix (Fin 1) (Fin 1) S) :
+    scalarStar D = 1 + scalarStar D * D := by
+  ext i j
+  obtain rfl : i = 0 := Subsingleton.elim i 0
+  obtain rfl : j = 0 := Subsingleton.elim j 0
+  simp only [scalarStar, of_apply, Matrix.add_apply, Matrix.one_apply_eq, Matrix.mul_apply,
+    Fin.sum_univ_one]
+  exact ClosedSemiring.kstar_eq_one_add_kstar_mul (D 0 0)
+
+private theorem Matrix.scalarStar_ind_left (d : Matrix (Fin 1) (Fin 1) S) :
+    ∀ N X : Matrix (Fin 1) m S, N + d * X ≤ X → scalarStar d * N ≤ X := by
+  intro N X h
+  refine Matrix.le_def.mpr fun i j => ?_
+  obtain rfl : i = 0 := Subsingleton.elim i 0
+  have h' := Matrix.le_def.mp h 0 j
+  simp only [scalarStar, Matrix.add_apply, Matrix.mul_apply, Fin.sum_univ_one, of_apply]
+    at h' ⊢
+  exact ClosedSemiring.kstar_induction_left _ _ _ h'
+
+private theorem Matrix.scalarStar_ind_right (d : Matrix (Fin 1) (Fin 1) S) :
+    ∀ N X : Matrix m (Fin 1) S, N + X * d ≤ X → N * scalarStar d ≤ X := by
+  intro N X h
+  refine Matrix.le_def.mpr fun i j => ?_
+  obtain rfl : j = 0 := Subsingleton.elim j 0
+  have h' := Matrix.le_def.mp h i 0
+  simp only [scalarStar, Matrix.add_apply, Matrix.mul_apply, Fin.sum_univ_one, of_apply]
+    at h' ⊢
+  exact ClosedSemiring.kstar_induction_right _ _ _ h'
+
+end ScalarStar
+
+section Blocks
+
+variable {p q : Type*} [Fintype p] [Fintype q]
+variable {A : Matrix p p S} {B : Matrix p q S} {C : Matrix q p S} {D : Matrix q q S}
+variable {Fs : Matrix p p S} {Ds : Matrix q q S}
+
+private theorem Matrix.fromBlocks_star_unfold_left [DecidableEq p] [DecidableEq q]
+    {M' : Matrix (p ⊕ q) (p ⊕ q) S} (hM : M' = fromBlocks A B C D)
+    (hFs : Fs = 1 + (A + B * Ds * C) * Fs) (hDs : Ds = 1 + D * Ds) :
+    fromBlocks Fs (Fs * B * Ds) (Ds * C * Fs) (Ds + Ds * C * Fs * B * Ds)
+      = 1 + M' * fromBlocks Fs (Fs * B * Ds) (Ds * C * Fs) (Ds + Ds * C * Fs * B * Ds) := by
+  subst hM
+  rw [fromBlocks_multiply, ← fromBlocks_one, fromBlocks_add, fromBlocks_inj]
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · conv_lhs => rw [hFs]
+    congr 1
+    simp only [Matrix.add_mul, Matrix.mul_assoc]
+  · rw [zero_add]
+    conv_lhs => rw [hFs]
+    simp only [Matrix.add_mul, Matrix.mul_add, Matrix.one_mul, Matrix.mul_assoc]
+    abel
+  · rw [zero_add]
+    conv_lhs => rw [hDs]
+    simp only [Matrix.add_mul, Matrix.one_mul, Matrix.mul_assoc]
+  · nth_rewrite 1 2 [hDs]
+    simp only [Matrix.add_mul, Matrix.mul_add, Matrix.one_mul, Matrix.mul_assoc]
+    abel
+
+private theorem Matrix.fromBlocks_star_unfold_right [DecidableEq p] [DecidableEq q]
+    {M' : Matrix (p ⊕ q) (p ⊕ q) S} (hM : M' = fromBlocks A B C D)
+    (hFs : Fs = 1 + Fs * (A + B * Ds * C)) (hDs : Ds = 1 + Ds * D) :
+    fromBlocks Fs (Fs * B * Ds) (Ds * C * Fs) (Ds + Ds * C * Fs * B * Ds)
+      = 1 + fromBlocks Fs (Fs * B * Ds) (Ds * C * Fs) (Ds + Ds * C * Fs * B * Ds) * M' := by
+  subst hM
+  rw [fromBlocks_multiply, ← fromBlocks_one, fromBlocks_add, fromBlocks_inj]
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · conv_lhs => rw [hFs]
+    congr 1
+    simp only [Matrix.mul_add, Matrix.mul_assoc]
+  · rw [zero_add]
+    nth_rewrite 1 [hDs]
+    simp only [Matrix.mul_add, Matrix.mul_one, Matrix.mul_assoc]
+  · rw [zero_add]
+    conv_lhs => rw [hFs]
+    simp only [Matrix.add_mul, Matrix.mul_add, Matrix.mul_one, Matrix.mul_assoc]
+    abel
+  · nth_rewrite 1 3 [hDs]
+    simp only [Matrix.add_mul, Matrix.mul_add, Matrix.mul_one, Matrix.mul_assoc]
+    abel
+
+variable [IsOrderedRing S] {m : Type}
+
+private theorem Matrix.fromBlocks_star_ind_left
+    (hFs : ∀ N X : Matrix p m S, N + (A + B * Ds * C) * X ≤ X → Fs * N ≤ X)
+    (hDs : ∀ N X : Matrix q m S, N + D * X ≤ X → Ds * N ≤ X)
+    {N X : Matrix (p ⊕ q) m S} (h : N + fromBlocks A B C D * X ≤ X) :
+    fromBlocks Fs (Fs * B * Ds) (Ds * C * Fs) (Ds + Ds * C * Fs * B * Ds) * N ≤ X := by
+  obtain ⟨N₁, N₂, rfl⟩ : ∃ N₁ N₂, N = fromRows N₁ N₂ := ⟨_, _, (fromRows_toRows N).symm⟩
+  obtain ⟨X₁, X₂, rfl⟩ : ∃ X₁ X₂, X = fromRows X₁ X₂ := ⟨_, _, (fromRows_toRows X).symm⟩
+  rw [fromBlocks_mul_fromRows] at h ⊢
+  have H1 : N₁ + (A * X₁ + B * X₂) ≤ X₁ := fun i j => h (.inl i) j
+  have H2 : N₂ + (C * X₁ + D * X₂) ≤ X₂ := fun i j => h (.inr i) j
+  rw [← add_assoc] at H2
+  have S1 : Ds * (N₂ + C * X₁) ≤ X₂ := hDs _ _ H2
+  have S4 : Fs * (N₁ + B * (Ds * N₂)) ≤ X₁ := by
+    refine hFs _ _ ?_
+    have key : N₁ + B * (Ds * N₂) + (A + B * Ds * C) * X₁
+        = N₁ + A * X₁ + B * (Ds * (N₂ + C * X₁)) := by
+      simp only [Matrix.add_mul, Matrix.mul_add, Matrix.mul_assoc]
+      abel
+    rw [key]
+    calc N₁ + A * X₁ + B * (Ds * (N₂ + C * X₁))
+        ≤ N₁ + A * X₁ + B * X₂ := Matrix.add_le_add le_rfl (Matrix.mul_le_mul_left B S1)
+      _ = N₁ + (A * X₁ + B * X₂) := add_assoc _ _ _
+      _ ≤ X₁ := H1
+  refine fromRows_le ?_ ?_
+  · calc Fs * N₁ + Fs * B * Ds * N₂
+        = Fs * (N₁ + B * (Ds * N₂)) := by simp only [Matrix.mul_add, Matrix.mul_assoc]
+      _ ≤ X₁ := S4
+  · calc Ds * C * Fs * N₁ + (Ds + Ds * C * Fs * B * Ds) * N₂
+        = Ds * N₂ + Ds * (C * (Fs * (N₁ + B * (Ds * N₂)))) := by
+          simp only [Matrix.add_mul, Matrix.mul_add, Matrix.mul_assoc]
+          abel
+      _ ≤ Ds * N₂ + Ds * (C * X₁) :=
+        Matrix.add_le_add le_rfl (Matrix.mul_le_mul_left Ds (Matrix.mul_le_mul_left C S4))
+      _ = Ds * (N₂ + C * X₁) := by rw [Matrix.mul_add]
+      _ ≤ X₂ := S1
+
+private theorem Matrix.fromBlocks_star_ind_right
+    (hFs : ∀ N X : Matrix m p S, N + X * (A + B * Ds * C) ≤ X → N * Fs ≤ X)
+    (hDs : ∀ N X : Matrix m q S, N + X * D ≤ X → N * Ds ≤ X)
+    {N X : Matrix m (p ⊕ q) S} (h : N + X * fromBlocks A B C D ≤ X) :
+    N * fromBlocks Fs (Fs * B * Ds) (Ds * C * Fs) (Ds + Ds * C * Fs * B * Ds) ≤ X := by
+  obtain ⟨N₁, N₂, rfl⟩ : ∃ N₁ N₂, N = fromCols N₁ N₂ := ⟨_, _, (fromCols_toCols N).symm⟩
+  obtain ⟨X₁, X₂, rfl⟩ : ∃ X₁ X₂, X = fromCols X₁ X₂ := ⟨_, _, (fromCols_toCols X).symm⟩
+  rw [fromCols_mul_fromBlocks] at h ⊢
+  have H1 : N₁ + (X₁ * A + X₂ * C) ≤ X₁ := fun i j => h i (.inl j)
+  have H2 : N₂ + (X₁ * B + X₂ * D) ≤ X₂ := fun i j => h i (.inr j)
+  rw [← add_assoc] at H2
+  have S1 : (N₂ + X₁ * B) * Ds ≤ X₂ := hDs _ _ H2
+  have S4 : (N₁ + N₂ * Ds * C) * Fs ≤ X₁ := by
+    refine hFs _ _ ?_
+    have key : N₁ + N₂ * Ds * C + X₁ * (A + B * Ds * C)
+        = N₁ + X₁ * A + (N₂ + X₁ * B) * Ds * C := by
+      simp only [Matrix.add_mul, Matrix.mul_add, Matrix.mul_assoc]
+      abel
+    rw [key]
+    calc N₁ + X₁ * A + (N₂ + X₁ * B) * Ds * C
+        ≤ N₁ + X₁ * A + X₂ * C := Matrix.add_le_add le_rfl (Matrix.mul_le_mul_right S1 C)
+      _ = N₁ + (X₁ * A + X₂ * C) := add_assoc _ _ _
+      _ ≤ X₁ := H1
+  refine fromCols_le ?_ ?_
+  · calc N₁ * Fs + N₂ * (Ds * C * Fs)
+        = (N₁ + N₂ * Ds * C) * Fs := by simp only [Matrix.add_mul, Matrix.mul_assoc]
+      _ ≤ X₁ := S4
+  · calc N₁ * (Fs * B * Ds) + N₂ * (Ds + Ds * C * Fs * B * Ds)
+        = N₂ * Ds + (N₁ + N₂ * Ds * C) * Fs * (B * Ds) := by
+          simp only [Matrix.add_mul, Matrix.mul_add, Matrix.mul_assoc]
+          abel
+      _ ≤ N₂ * Ds + X₁ * (B * Ds) :=
+        Matrix.add_le_add le_rfl (Matrix.mul_le_mul_right S4 (B * Ds))
+      _ = (N₂ + X₁ * B) * Ds := by simp only [Matrix.add_mul, Matrix.mul_assoc]
+      _ ≤ X₂ := S1
+
+end Blocks
+
+theorem Matrix.cstar_unfold_left {n : ℕ} (M : Matrix (Fin n) (Fin n) S) :
+    cstar M = 1 + M * cstar M := by
+  induction n with
+  | zero => ext i; exact i.elim0
+  | succ n ih =>
+    exact reindex_unfold_left finSumFinEquiv
+      (fromBlocks_star_unfold_left (fromBlocks_toBlocks _).symm (ih _)
+        (scalarStar_unfold_left _))
+
+theorem Matrix.cstar_unfold_right {n : ℕ} (M : Matrix (Fin n) (Fin n) S) :
+    cstar M = 1 + cstar M * M := by
+  induction n with
+  | zero => ext i; exact i.elim0
+  | succ n ih =>
+    exact reindex_unfold_right finSumFinEquiv
+      (fromBlocks_star_unfold_right (fromBlocks_toBlocks _).symm (ih _)
+        (scalarStar_unfold_right _))
+
+theorem Matrix.cstar_ind_left [IsOrderedRing S] {n : ℕ} {m : Type}
+    (T : Matrix (Fin n) (Fin n) S) (N X : Matrix (Fin n) m S) (h : N + T * X ≤ X) :
+    cstar T * N ≤ X := by
+  induction n with
+  | zero => exact fun i => i.elim0
+  | succ n ih =>
+    refine reindex_mul_le finSumFinEquiv ?_
+    have h' : N.submatrix ⇑finSumFinEquiv id
+        + reindex finSumFinEquiv.symm finSumFinEquiv.symm T * X.submatrix ⇑finSumFinEquiv id
+        ≤ X.submatrix ⇑finSumFinEquiv id := by
+      rw [reindex_apply, Equiv.symm_symm, submatrix_mul_equiv T X _ finSumFinEquiv id]
+      exact submatrix_le_submatrix ⇑finSumFinEquiv id h
+    rw [← fromBlocks_toBlocks (reindex finSumFinEquiv.symm finSumFinEquiv.symm T)] at h'
+    exact fromBlocks_star_ind_left (fun N X => ih _ N X) (scalarStar_ind_left _) h'
+
+theorem Matrix.cstar_ind_right [IsOrderedRing S] {n : ℕ} {m : Type}
+    (T : Matrix (Fin n) (Fin n) S) (N X : Matrix m (Fin n) S) (h : N + X * T ≤ X) :
+    N * cstar T ≤ X := by
+  induction n with
+  | zero => exact fun i j => j.elim0
+  | succ n ih =>
+    refine reindex_le_mul finSumFinEquiv ?_
+    have h' : N.submatrix id ⇑finSumFinEquiv
+        + X.submatrix id ⇑finSumFinEquiv * reindex finSumFinEquiv.symm finSumFinEquiv.symm T
+        ≤ X.submatrix id ⇑finSumFinEquiv := by
+      rw [reindex_apply, Equiv.symm_symm, submatrix_mul_equiv X T id finSumFinEquiv _]
+      exact submatrix_le_submatrix id ⇑finSumFinEquiv h
+    rw [← fromBlocks_toBlocks (reindex finSumFinEquiv.symm finSumFinEquiv.symm T)] at h'
+    exact fromBlocks_star_ind_right (fun N X => ih _ N X) (scalarStar_ind_right _) h'
+
+noncomputable instance {n : ℕ} [IsOrderedRing S] :
+    ClosedSemiring (Matrix (Fin n) (Fin n) S) where
+  toPartialOrder := Matrix.instPartialOrder
+  kstar := Matrix.cstar
+  kstar_eq_one_add_mul_kstar := Matrix.cstar_unfold_left
+  kstar_eq_one_add_kstar_mul := Matrix.cstar_unfold_right
+  kstar_induction_left := Matrix.cstar_ind_left
+  kstar_induction_right := Matrix.cstar_ind_right
 
 end Section3
 
