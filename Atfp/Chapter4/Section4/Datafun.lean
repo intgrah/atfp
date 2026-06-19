@@ -88,9 +88,9 @@ def FinTy.card : FinTy → Nat
   | [T]ᵈ => T.card
 
 def LatTy.card : LatTy → Nat
-  | .unit => 1
-  | .prod L₁ L₂ => L₁.card * L₂.card
-  | .powerset T => 2 ^ T.card
+  | 1 => 1
+  | L₁ * L₂ => L₁.card * L₂.card
+  | 𝒫' T => 2 ^ T.card
 
 scoped instance : Coe LatTy Ty := ⟨LatTy.toTy⟩
 
