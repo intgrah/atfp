@@ -170,7 +170,7 @@ def μ_iso : True := by
       let ccA : Cocone D := ⟨A, f, ?ht⟩
       case ht =>
         intro x y ⟨⟨hxy⟩⟩
-        simp only [Functor.const_obj_obj, Functor.const_obj_map, Category.comp_id]
+        simp only [Functor.const_obj_map]
         -- It suffices to show the following family of diagrams commute:
         suffices triangle : ∀ n, f n = chain.step F n ≫ f (n + 1) by
           induction y, hxy using Nat.le_induction with
@@ -178,6 +178,7 @@ def μ_iso : True := by
             calc D.map (𝟙 x) ≫ f x
               _ = 𝟙 (D.obj x) ≫ f x := by rw [D.map_id]
               _ = f x := Category.id_comp (f x)
+              _ = f x ≫ 𝟙 A := (Category.comp_id (f x)).symm
           | succ k hxk ih =>
             calc D.map ⟨⟨hxk.step⟩⟩ ≫ f (k + 1)
               _ = D.map (⟨⟨hxk⟩⟩ ≫ ⟨⟨k.le_succ⟩⟩) ≫ f (k + 1) := rfl
@@ -187,7 +188,7 @@ def μ_iso : True := by
                 rw [show D.map ⟨⟨k.le_succ⟩⟩ = chain.step F k from
                   Functor.ofSequence_map_homOfLE_succ _ k]
               _ = D.map ⟨⟨hxk⟩⟩ ≫ f k := by rw [triangle k]
-              _ = f x := ih
+              _ = f x ≫ 𝟙 A := ih
         intro n
         show f n = chain.step F n ≫ f (n + 1)
         -- Using the definition of f (n + 1), this is equivalent to showing:
