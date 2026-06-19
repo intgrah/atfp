@@ -289,6 +289,11 @@ instance : ClosedSemiring ℕ∞ where
       norm_cast at h
       simp only [Nat.succ_mul, Nat.mul_succ] at h
       omega
+    case zero.succ.succ =>
+      simp only [zero_mul, add_zero] at h
+      change (1 : ℕ∞) * _ ≤ _
+      rw [one_mul]
+      exact h
     all_goals simp_all
   kstar_induction_right a b x h := by
     cases a using ENat.nat_induction <;>
@@ -299,6 +304,11 @@ instance : ClosedSemiring ℕ∞ where
       norm_cast at h
       simp only [Nat.succ_mul, Nat.mul_succ] at h
       omega
+    case zero.succ.succ =>
+      simp only [mul_zero, add_zero] at h
+      change _ * (1 : ℕ∞) ≤ _
+      rw [mul_one]
+      exact h
     all_goals simp_all
 
 /-! Definition 5.1.14 -/
