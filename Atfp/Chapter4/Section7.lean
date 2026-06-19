@@ -57,7 +57,7 @@ lemma FinTy.toTy_denotationC {T : FinTy.{u}} :〚T〛 = 〚T.toTy〛 := by
     rw [ihT]
     rfl
 
-instance LatTy.instSemilatticeSupC : (L : LatTy) → SemilatticeSup 〚L〛.X
+noncomputable instance LatTy.instSemilatticeSupC : (L : LatTy) → SemilatticeSup 〚L〛.X
   | unit => inferInstanceAs (SemilatticeSup PUnit)
   | prod L₁ L₂ => @Prod.instSemilatticeSup _ _ L₁.instSemilatticeSupC L₂.instSemilatticeSupC
   | powerset T => inferInstanceAs (SemilatticeSup (Set 〚T〛.X))

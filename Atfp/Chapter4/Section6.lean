@@ -228,7 +228,7 @@ variable {𝕏 𝕐 : Change}
 
 instance : FunLike (Hom 𝕏 𝕐) 𝕏.X 𝕐.X where
   coe f := f.base
-  coe_injective' _ _ h :=
+  coe_injective _ _ h :=
     Hom.ext (ConcreteCategory.hom_injective (DFunLike.coe_fn_eq.mp h))
 
 noncomputable def Hom.deriv (h : Hom 𝕏 𝕐) :
