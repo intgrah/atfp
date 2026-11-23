@@ -761,18 +761,18 @@ section Section5
 open scoped unitInterval
 
 instance : Add I where
-  add a b := ⟨max a.1 b.1, by aesop⟩
+  add a b := ⟨max a.val b.val, by aesop⟩
 
 instance : AddCommMonoid I where
   zero_add a := max_eq_right zero_le
   add_zero a := max_eq_left zero_le
-  add_assoc a b c := Subtype.ext (max_assoc a.1 b.1 c.1)
-  add_comm a b := Subtype.ext (max_comm a.1 b.1)
+  add_assoc a b c := Subtype.ext (max_assoc a.val b.val c.val)
+  add_comm a b := Subtype.ext (max_comm a.val b.val)
   nsmul := nsmulRec
 
 instance : Semiring I where
-  left_distrib a b c := Subtype.ext (mul_max_of_nonneg b.1 c.1 (Set.mem_Icc.mp a.2).1)
-  right_distrib a b c := Subtype.ext (max_mul_of_nonneg a.1 b.1 (Set.mem_Icc.mp c.2).1)
+  left_distrib a b c := Subtype.ext (mul_max_of_nonneg b.val c.val (Set.mem_Icc.mp a.property).1)
+  right_distrib a b c := Subtype.ext (max_mul_of_nonneg a.val b.val (Set.mem_Icc.mp c.property).1)
 
 instance : KleeneAlgebra I where
   kstar _ := 1
