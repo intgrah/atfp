@@ -92,10 +92,10 @@ private theorem D.mapLE_trans {a b c : ℕ} (hab : a ≤ b) (hbc : b ≤ c) (x :
       by_cases ha : a = k + 1
       · subst ha
         simp only [D.mapLE, dite_true]; rfl
-      · simp only [D.mapLE, dite_true, dif_neg ha, Function.comp_apply]; rfl
+      · simp only [D.mapLE, dite_true, dite_eq_right ha, Function.comp_apply]; rfl
     · by_cases ha : a = k + 1
       · omega
-      · simp only [D.mapLE, dif_neg ha, dif_neg hb, Function.comp_apply]
+      · simp only [D.mapLE, dite_eq_right ha, dite_eq_right hb, Function.comp_apply]
         exact congrArg D.step (ih hab (by omega) x)
 
 def D : ℕ ⥤ Type u where
@@ -142,7 +142,7 @@ example : Nat.foldO f (Nat.succ k) = f (.inr (Nat.foldO f k)) := rfl
 example : Nat.foldO f (in' (.inl ())) = f (.inl ()) := rfl
 example : Nat.foldO f (in' (.inr k)) = f (.inr (Nat.foldO f k)) := rfl
 
-def Nat.foldO_str {α} {f : Unit ⊕ α → α} : Nat.foldO f ∘ in' = f ∘ N.map (↾Nat.foldO f) := by
+theorem Nat.foldO_str {α} {f : Unit ⊕ α → α} : Nat.foldO f ∘ in' = f ∘ N.map (↾Nat.foldO f) := by
   ext (_ | _) <;> rfl
 
 /-! Definition 3.2.1 -/
