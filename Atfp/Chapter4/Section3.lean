@@ -63,9 +63,6 @@ def binaryProductCone (A B : PartOrd) : LimitCone (pair A B) where
   cone := BinaryFan.mk fst snd
   isLimit := prod_isLimit
 
-instance : CartesianMonoidalCategory PartOrd :=
-  CartesianMonoidalCategory.ofChosenFiniteProducts terminalCone binaryProductCone
-
 def initial : PartOrd := of PEmpty
 
 def initial.to (X : PartOrd) : initial ⟶ X :=
@@ -114,7 +111,7 @@ instance (A B : PartOrd) : PartialOrder (A ⟶ B) where
   le_antisymm f g h₁ h₂ := ext fun x => le_antisymm (h₁ x) (h₂ x)
 
 instance : CartesianMonoidalCategory PartOrd :=
-  CartesianMonoidalCategory.ofChosenFiniteProducts terminalCone binaryProductCone
+  .ofChosenFiniteProducts terminalCone binaryProductCone
 
 def exp (A B : PartOrd) : PartOrd := of (A ⟶ B)
 
