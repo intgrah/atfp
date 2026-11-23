@@ -115,16 +115,16 @@ noncomputable def LatTy.comprehensionC {𝕏 : Change} {T : FinTy} :
                 (Set.subset_biUnion_of_mem (u := fun x => f.base (a, x)) (hds hx))⟩,
           fun (a, (s : Set 〚T〛.X))
               ((da, (ds : Set 〚T〛.X)) : 𝕏.Δ a × Set 〚T〛.X) => ?_⟩
-        change (⋃ x ∈ s ∪ ds, f.base (a ⨁[𝕏] da, x) : Set 〚T'〛.X) =
-          (⋃ x ∈ s, f.base (a, x)) ∪
-            ((⋃ x ∈ s ∪ ds, f' (a, x) (da, ⟨⟩)) ∪ ⋃ x ∈ ds, f.base (a, x))
+        let before : 〚T〛.X → Set 〚T'〛.X := fun x => f.base (a, x)
+        let after : 〚T〛.X → Set 〚T'〛.X := fun x => f.base (a ⨁[𝕏] da, x)
+        let delta : 〚T〛.X → Set 〚T'〛.X := fun x => f' (a, x) (da, ⟨⟩)
+        change (⋃ x ∈ s ∪ ds, after x) =
+          (⋃ x ∈ s, before x) ∪ ((⋃ x ∈ s ∪ ds, delta x) ∪ ⋃ x ∈ ds, before x)
         ext y
-        simp only [Set.mem_iUnion, Set.mem_union]
+        simp only [Set.mem_iUnion, Set.mem_union, exists_prop]
         apply Iff.intro
         · rintro ⟨x, hx | hx, hy⟩ <;> {
-            have eq : f.base (a ⨁[𝕏] da, x) =
-                (f.base (a, x) ∪ f' (a, x) (da, ⟨⟩) : Set 〚T'〛.X) :=
-              hf' (a, x) (da, ⟨⟩)
+            have eq : after x = before x ∪ delta x := hf' (a, x) (da, ⟨⟩)
             rw [eq, Set.mem_union] at hy
             rcases hy with hy | hy
             · first | exact .inl ⟨x, ‹_›, hy⟩ | exact .inr (.inr ⟨x, ‹_›, hy⟩)
@@ -134,8 +134,7 @@ noncomputable def LatTy.comprehensionC {𝕏 : Change} {T : FinTy} :
           · exact ⟨x, .inl hx, f.base.hom.monotone
               (show ((a, x) : 𝕏.X × [〚T〛]ᵈ.X) ≤ (a ⨁[𝕏] da, x) from
                 ⟨𝕏.update_monotone a da, rfl⟩) hy⟩
-          · have eq := hf' (a, x) (da, ⟨⟩)
-            dsimp [Change.prod, Change.disc] at eq
+          · have eq : after x = before x ∪ delta x := hf' (a, x) (da, ⟨⟩)
             exact ⟨x, hx.elim .inl .inr, eq ▸ .inr hy⟩
           · exact ⟨x, .inr hx, f.base.hom.monotone
               (show ((a, x) : 𝕏.X × [〚T〛]ᵈ.X) ≤ (a ⨁[𝕏] da, x) from
@@ -179,7 +178,7 @@ theorem FinTy.nat_card_eqC : ∀ T : FinTy, Nat.card 〚T〛.X = T.card
     rw [@Nat.card_sum _ _ T₁.instFiniteC T₂.instFiniteC, T₁.nat_card_eqC, T₂.nat_card_eqC]
   | powerset T => by
     change Nat.card (Set 〚T〛.X) = 2 ^ T.card
-    rw [show Set 〚T〛.X = (〚T〛.X → Prop) from rfl, @Nat.card_fun _ _ T.instFiniteC, T.nat_card_eqC]
+    rw [Nat.card_congr Set.memEquiv, @Nat.card_fun _ _ T.instFiniteC, T.nat_card_eqC]
     simp [Nat.card_eq_fintype_card]
   | discrete T => T.nat_card_eqC
 
@@ -192,8 +191,7 @@ theorem LatTy.nat_card_eqC : ∀ L : LatTy, Nat.card 〚L〛.X = L.card
     rw [Nat.card_prod, L₁.nat_card_eqC, L₂.nat_card_eqC]
   | powerset T => by
     change Nat.card (Set 〚T〛.X) = 2 ^ T.card
-    rw [show Set 〚T〛.X = (〚T〛.X → Prop) from rfl,
-      @Nat.card_fun _ _ T.instFiniteC, T.nat_card_eqC]
+    rw [Nat.card_congr Set.memEquiv, @Nat.card_fun _ _ T.instFiniteC, T.nat_card_eqC]
     simp [Nat.card_eq_fintype_card]
 
 theorem LatTy.fixC_isFixedPt {𝕏 : Change} {L : LatTy}

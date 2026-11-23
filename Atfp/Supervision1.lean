@@ -17,6 +17,7 @@ section Exercise1
 example : Monoid ℕ where
   one := 0
   mul := Nat.add
+  npow := @npowRec ℕ ⟨0⟩ ⟨Nat.add⟩
   mul_one := Nat.add_zero
   one_mul := Nat.zero_add
   mul_assoc := Nat.add_assoc
@@ -167,7 +168,7 @@ structure Inductive (F : Type u ⥤ Type u) where
 variable {F : Type u ⥤ Type u} (I : Inductive F) {α : Type u}
 
 def Inductive.fold (alg : F.obj α → α) : I.alg.a → α :=
-  (I.isInitial.to ⟨α, alg⟩).f
+  (I.isInitial.to ⟨α, ↾alg⟩).f
 
 def Inductive.into : F.obj I.alg.a → I.alg.a := I.alg.str
 
@@ -175,7 +176,7 @@ def Inductive.out : I.alg.a → F.obj I.alg.a :=
   Algebra.Initial.strInv I.isInitial
 
 def Inductive.out' : I.alg.a → F.obj I.alg.a :=
-  I.fold (F.map I.into)
+  I.fold (F.map (↾I.into))
 
 example : I.out = I.out' := rfl
 
@@ -213,7 +214,7 @@ def PolynomialFunctor.denotation : PolynomialFunctor → Type u ⥤ Type u
   | const A => Functor.const (Type u) |>.obj A
   | prod F G => {
       obj X := 〚F〛.obj X × 〚G〛.obj X
-      map f := Prod.map (〚F〛.map f) (〚G〛.map f)
+      map f := ↾Prod.map (〚F〛.map f) (〚G〛.map f)
       map_id X := by
         rw [〚F〛.map_id, 〚G〛.map_id]
         rfl
@@ -223,9 +224,10 @@ def PolynomialFunctor.denotation : PolynomialFunctor → Type u ⥤ Type u
     }
   | coprod F G => {
       obj X := 〚F〛.obj X ⊕ 〚G〛.obj X
-      map f := Sum.map (〚F〛.map f) (〚G〛.map f)
+      map f := ↾Sum.map (〚F〛.map f) (〚G〛.map f)
       map_id X := by
         rw [〚F〛.map_id, 〚G〛.map_id]
+        congr
         exact Sum.map_id_id
       map_comp f g := by
         rw [〚F〛.map_comp, 〚G〛.map_comp]
@@ -318,7 +320,7 @@ def Split.map {R S} (f : R → S) : obj α R → obj α S
 /-- Split is indeed a lawful functor -/
 def Split (α : Type) : Type ⥤ Type where
   obj := Split.obj α
-  map := Split.map
+  map f := ↾Split.map f
   map_id _ := by ext (_ | _ | _ | _) <;> rfl
   map_comp _ _ := by ext (_ | _ | _ | _) <;> rfl
 
@@ -326,7 +328,9 @@ open Endofunctor (Algebra Coalgebra)
 
 abbrev Split.coalg : Coalgebra (Split α) where
   V := List α × List α -- carrier
-  str -- structure morphism from V ⟶ Split.obj α V
+  str := ↾step -- structure morphism from V ⟶ Split.obj α V
+where
+  step : List α × List α → Split.obj α (List α × List α)
     | (s₁, []) => .inl s₁
     | ([], s₂) => .inr s₂
     | (s₁@(c₁ :: s₁'), s₂@(c₂ :: s₂')) =>
@@ -337,7 +341,9 @@ abbrev Split.coalg : Coalgebra (Split α) where
 
 abbrev Split.alg : Algebra (Split α) where
   a := ℕ -- carrier
-  str -- structure morphism from Split.obj α a ⟶ a
+  str := ↾step -- structure morphism from Split.obj α a ⟶ a
+where
+  step : Split.obj α ℕ → ℕ
     | .inl s₁ => s₁.length
     | .inr s₂ => s₂.length
     | .cons x => x
@@ -365,12 +371,13 @@ def Split.hylo
 theorem Split.coalg_wf :
     WellFounded fun (x y : List α × List α) => Child (Split.coalg.str y) x := by
   apply Subrelation.wf (r := InvImage (· < ·) fun ⟨s₁, s₂⟩ => s₁.length + s₂.length)
-  · rintro a ⟨_ | _, _ | _⟩ hab
+  · rintro a ⟨_ | ⟨c₁, s₁⟩, _ | ⟨c₂, s₂⟩⟩ hab
     · nomatch hab
     · nomatch hab
     · nomatch hab
-    · dsimp [Split.coalg] at hab
-      split at hab <;> cases hab <;> simp [InvImage, List.length] <;> omega
+    · have hab' : Child (Split.coalg.step (c₁ :: s₁, c₂ :: s₂)) a := hab
+      simp only [Split.coalg.step] at hab'
+      split at hab' <;> cases hab' <;> simp [InvImage, List.length] <;> omega
   · exact InvImage.wf _ Nat.lt_wfRel.wf
 
 def lev₂ : List α × List α → ℕ := Split.hylo Split.coalg Split.coalg_wf Split.alg

@@ -215,8 +215,8 @@ section Section3
 
 /-! Example 2.3.10 -/
 
-#check Types.isTerminalPunit
-#check Types.isInitialPunit
+#check Types.isTerminalPUnit
+#check Types.isInitialPEmpty
 
 /-! Definition 2.3.11 -/
 #check HasBinaryProducts

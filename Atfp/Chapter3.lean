@@ -177,11 +177,12 @@ def initial.isInitial : IsInitial initial :=
     have : in' ∘ out = id := by
       funext x; exact ConcreteCategory.congr_hom iso.hom_inv_id x
     -- we also know that
+    let hFun : μN → A := ⇑h
     have h₁ :=
       calc ⇑f ∘ ⇑(N.map h) ∘ out
         _ = ⇑h ∘ in' ∘ out := congrArg (· ∘ out) hh
-        _ = ⇑h ∘ id := congrArg (⇑h ∘ ·) this
-        _ = ⇑h := Function.comp_id ⇑h
+        _ = hFun ∘ id := congrArg (⇑h ∘ ·) this
+        _ = hFun := Function.comp_id hFun
     -- Similarly
     have h₂ :=
       calc ⇑f ∘ ⇑(N.map (↾Nat.foldO f)) ∘ out
@@ -504,9 +505,8 @@ theorem WellFoundedLT.iff_WF2 {X : Type u} [Preorder X] : WellFoundedLT X ↔ WF
       | intro a _ ih =>
         obtain ⟨⟨b, hb_mem⟩, hba⟩ := h ⟨a, ha⟩
         exact ih b hba hb_mem
-    exact this x x.prop (hwf.apply x)
+    exact this x x.prop (hwf x)
   · intro wf
-    constructor
     constructor
     intro a
     by_contra hacc

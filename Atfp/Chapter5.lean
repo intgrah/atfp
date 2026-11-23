@@ -3,7 +3,7 @@ module
 public import Mathlib.Algebra.Order.Kleene
 public import Mathlib.Algebra.Tropical.Basic
 public import Mathlib.Combinatorics.Digraph.Basic
-public import Mathlib.Data.ENat.Basic
+public import Mathlib.Data.ENat.Monoid
 public import Mathlib.Data.Set.Semiring
 public import Mathlib.Topology.UnitInterval
 public import Mathlib.LinearAlgebra.Matrix.Defs
@@ -91,7 +91,7 @@ variable {M : Type u} [Monoid M]
 
 /-! Example 5.1.6 -/
 
-#synth Semiring (Tropical ℕ∞)
+#synth Semiring (MinTropical ℕ∞)
 
 section Section1
 
@@ -121,25 +121,23 @@ class ClosedSemiring (α : Type u) extends Semiring α, PartialOrder α, KStar �
 
 open scoped Pointwise in
 noncomputable instance : ClosedSemiring (SetSemiring M) where
-  kstar A := (⋃ n, A.down ^ n).up
+  kstar A := SetSemiring.ofSet (⋃ n, A.toSet ^ n)
   kstar_eq_one_add_mul_kstar a := by
-    apply SetSemiring.down.injective
-    simp only [SetSemiring.down_up, SetSemiring.down_add, SetSemiring.down_mul]
-    change (⋃ n, a.down ^ n) = 1 ∪ a.down * ⋃ n, a.down ^ n
+    apply SetSemiring.toSetEquiv.injective
+    change (⋃ n, a.toSet ^ n) = 1 ∪ a.toSet * ⋃ n, a.toSet ^ n
     rw [Set.mul_iUnion]
     simp_rw [← pow_succ']
-    rw [← pow_zero a.down, Set.union_iUnion_nat_succ fun n => a.down ^ n]
+    rw [← pow_zero a.toSet, Set.union_iUnion_nat_succ fun n => a.toSet ^ n]
   kstar_eq_one_add_kstar_mul a := by
-    apply SetSemiring.down.injective
-    simp only [SetSemiring.down_up, SetSemiring.down_add, SetSemiring.down_mul]
-    change (⋃ n, a.down ^ n) = 1 ∪ (⋃ n, a.down ^ n) * a.down
+    apply SetSemiring.toSetEquiv.injective
+    change (⋃ n, a.toSet ^ n) = 1 ∪ (⋃ n, a.toSet ^ n) * a.toSet
     rw [Set.iUnion_mul]
     simp_rw [← pow_succ]
-    rw [← pow_zero a.down, Set.union_iUnion_nat_succ fun n => a.down ^ n]
+    rw [← pow_zero a.toSet, Set.union_iUnion_nat_succ fun n => a.toSet ^ n]
   kstar_induction_left a b x h := by
-    rw [← SetSemiring.down_subset_down, SetSemiring.down_add, SetSemiring.down_mul] at h
-    rw [← SetSemiring.down_subset_down, SetSemiring.down_mul]
-    change (⋃ n, a.down ^ n) * b.down ⊆ x.down
+    rw [← SetSemiring.toSet_subset_toSet, SetSemiring.toSet_add, SetSemiring.toSet_mul] at h
+    rw [← SetSemiring.toSet_subset_toSet, SetSemiring.toSet_mul]
+    change (⋃ n, a.toSet ^ n) * b.toSet ⊆ x.toSet
     rw [Set.iUnion_mul]
     have ⟨hb, hax⟩ := Set.union_subset_iff.mp h
     apply Set.iUnion_subset
@@ -148,9 +146,9 @@ noncomputable instance : ClosedSemiring (SetSemiring M) where
     | zero => rw [pow_zero, one_mul]; exact hb
     | succ n ih => rw [pow_succ', mul_assoc]; exact (Set.mul_subset_mul_left ih).trans hax
   kstar_induction_right a b x h := by
-    rw [← SetSemiring.down_subset_down, SetSemiring.down_add, SetSemiring.down_mul] at h
-    rw [← SetSemiring.down_subset_down, SetSemiring.down_mul]
-    change b.down * (⋃ n, a.down ^ n) ⊆ x.down
+    rw [← SetSemiring.toSet_subset_toSet, SetSemiring.toSet_add, SetSemiring.toSet_mul] at h
+    rw [← SetSemiring.toSet_subset_toSet, SetSemiring.toSet_mul]
+    change b.toSet * (⋃ n, a.toSet ^ n) ⊆ x.toSet
     rw [Set.mul_iUnion]
     have ⟨hb, hxa⟩ := Set.union_subset_iff.mp h
     apply Set.iUnion_subset
@@ -243,9 +241,9 @@ instance : ClosedSemiring Bool where
 
 /-! Example 5.1.12 -/
 
-open Tropical in
-instance : ClosedSemiring (Tropical ℕ∞) where
-  toPartialOrder := inferInstanceAs (PartialOrder (Tropical ℕ∞)ᵒᵈ)
+open MinTropical in
+instance : ClosedSemiring (MinTropical ℕ∞) where
+  toPartialOrder := inferInstanceAs (PartialOrder (MinTropical ℕ∞)ᵒᵈ)
   kstar _ := trop 0
   kstar_eq_one_add_mul_kstar a := by
     cases a using tropRec with | h a =>
