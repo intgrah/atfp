@@ -170,8 +170,8 @@ theorem FinTy.nat_card_eq : ∀ T : FinTy, Nat.card 〚T〛 = T.card
     rw [@Nat.card_sum _ _ T₁.instFinite T₂.instFinite, T₁.nat_card_eq, T₂.nat_card_eq]
   | powerset T => by
     change Nat.card (Set 〚T〛) = 2 ^ T.card
-    rw [Nat.card_congr Set.memEquiv, @Nat.card_fun _ _ T.instFinite, T.nat_card_eq]
-    simp [Nat.card_eq_fintype_card]
+    let := @Fintype.ofFinite 〚T〛 T.instFinite
+    simpa only [Fintype.card_eq_nat_card, T.nat_card_eq] using Fintype.card_set (α := 〚T〛)
   | discrete T => T.nat_card_eq
 
 theorem LatTy.nat_card_eq : ∀ L : LatTy, Nat.card 〚L〛 = L.card
@@ -183,8 +183,8 @@ theorem LatTy.nat_card_eq : ∀ L : LatTy, Nat.card 〚L〛 = L.card
     rw [Nat.card_prod, L₁.nat_card_eq, L₂.nat_card_eq]
   | powerset T => by
     change Nat.card (Set 〚T〛) = 2 ^ T.card
-    rw [Nat.card_congr Set.memEquiv, @Nat.card_fun _ _ T.instFinite, T.nat_card_eq]
-    simp [Nat.card_eq_fintype_card]
+    let := @Fintype.ofFinite 〚T〛 T.instFinite
+    simpa only [Fintype.card_eq_nat_card, T.nat_card_eq] using Fintype.card_set (α := 〚T〛)
 
 theorem LatTy.fix_isFixedPt {A : PartOrd} {L : LatTy}
     (f : [A]ᵈ ⊗ 〚L〛 ⟶ 〚L〛) (a : [A]ᵈ) :

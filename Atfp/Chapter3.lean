@@ -3,6 +3,7 @@ module
 public import Mathlib.Basic.Rel
 public import Mathlib.CategoryTheory.Endofunctor.Algebra
 public import Mathlib.CategoryTheory.Limits.Shapes.FunctorToTypes
+import Mathlib.Order.WellFounded
 
 @[expose] public section
 
@@ -490,39 +491,13 @@ def WF2 (X : Type u) [Preorder X] : Prop :=
   ∀ A : Set X, Inhabited A → ∃ a : A, ∀ b : A, b ≤ a → a ≤ b
 
 theorem WellFoundedLT.iff_WF2 {X : Type u} [Preorder X] : WellFoundedLT X ↔ WF2 X := by
+  rw [WellFounded.wellFoundedLT_iff_exists_minimal]
   constructor
-  · intro ⟨hwf⟩ A ⟨x⟩
-    by_contra h
-    replace h : ∀ a : A, ∃ b : A, b < a := by
-      intro a
-      have ⟨b, hb⟩ := Classical.not_forall.mp (not_exists.mp h a)
-      use b
-      have ⟨hb₁, hb₂⟩ := Classical.not_imp.mp hb
-      exact lt_of_le_not_ge hb₁ hb₂
-    have : ∀ a, a ∈ A → Acc (· < ·) a → False := by
-      intro a ha hacc
-      induction hacc with
-      | intro a _ ih =>
-        obtain ⟨⟨b, hb_mem⟩, hba⟩ := h ⟨a, ha⟩
-        exact ih b hba hb_mem
-    exact this x x.prop (hwf x)
-  · intro wf
-    constructor
-    intro a
-    by_contra hacc
-    have build : ∀ x : {x : X // ¬Acc (· < ·) x}, ∃ y : {y : X // ¬Acc (· < ·) y}, y < x := by
-      intro ⟨x, hx⟩
-      by_contra hall
-      apply hx
-      exact Acc.intro x fun y hy => by
-        by_contra hny
-        exact hall ⟨⟨y, hny⟩, hy⟩
-    choose next hnext using build
-    let chain : ℕ → {x : X // ¬Acc (· < ·) x} := Nat.rec ⟨a, hacc⟩ (fun _ => next)
-    have hchain_desc : ∀ n, (chain (n + 1)).val < (chain n).val := fun n => hnext (chain n)
-    have ⟨⟨min, hmin⟩, hmin_spec⟩ := wf (Set.range (fun n => (chain n).val)) ⟨⟨a, ⟨0, rfl⟩⟩⟩
-    obtain ⟨i, hi⟩ := Set.mem_range.mp hmin
-    have hle : (chain (i + 1)).val ≤ min := hi ▸ (hchain_desc i).le
-    exact (hchain_desc i).not_ge (hi.symm ▸ hmin_spec ⟨(chain (i + 1)).val, ⟨i + 1, rfl⟩⟩ hle)
+  · intro h s hs
+    have ⟨a, ha, hmin⟩ := h s (Set.nonempty_coe_sort.mp ⟨hs.default⟩)
+    exact ⟨⟨a, ha⟩, fun b hb => hmin b.property hb⟩
+  · intro h s hs
+    have ⟨a, hmin⟩ := h s ⟨hs.coe_sort.some⟩
+    exact ⟨a, a.property, fun b hb hba => hmin ⟨b, hb⟩ hba⟩
 
 end Section10
