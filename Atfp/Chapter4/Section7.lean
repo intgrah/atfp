@@ -86,35 +86,39 @@ noncomputable def LatTy.comprehensionC {𝕏 : Change} {T : FinTy} :
   | prod L₁ L₂, f =>
     prod_lift (L₁.comprehensionC (f ≫ fst)) (L₂.comprehensionC (f ≫ snd))
   | powerset T', f => {
-      base := PartOrd.ofHom
-        { toFun := fun (a, (s : Set 〚T〛.X)) =>
-            (⋃ x ∈ s, f.base (a, x) : Set 〚T'〛.X)
-          monotone' := by
-            intro (a₁, (s₁ : Set 〚T〛.X)) (a₂, (s₂ : Set 〚T〛.X)) ⟨ha, hs⟩
-            apply Set.iUnion₂_subset
-            intro x hx₁
-            have h₁ : f.base (a₁, x) ≤ f.base (a₂, x) := f.base.hom.monotone ⟨ha, le_rfl⟩
-            have h₂ : f.base (a₂, x) ≤ ⋃ y ∈ s₂, f.base (a₂, y) :=
-              Set.subset_biUnion_of_mem (u := fun y => f.base (a₂, y)) (hs hx₁)
-            exact h₁.trans h₂ }
+      base := {
+        toFun := fun (a, (s : Set 〚T〛.X)) =>
+          (⋃ x ∈ s, f.base (a, x) : Set 〚T'〛.X)
+        monotone' := by
+          intro (a₁, (s₁ : Set 〚T〛.X)) (a₂, (s₂ : Set 〚T〛.X)) ⟨ha, hs⟩
+          apply Set.iUnion₂_subset
+          intro x hx₁
+          have h₁ : f.base (a₁, x) ≤ f.base (a₂, x) := f.base.monotone ⟨ha, le_rfl⟩
+          have h₂ : f.base (a₂, x) ≤ ⋃ y ∈ s₂, f.base (a₂, y) :=
+            Set.subset_biUnion_of_mem (u := fun y => f.base (a₂, y)) (hs hx₁)
+          exact h₁.trans h₂
+      }
       hasDeriv := by
-        obtain ⟨f', hf'⟩ := f.hasDeriv
-        refine ⟨fun (a, (s : Set 〚T〛.X)) => PartOrd.ofHom
-          ⟨fun ((da, (ds : Set 〚T〛.X)) : 𝕏.Δ a × Set 〚T〛.X) =>
-            ((⋃ x ∈ s ∪ ds, f' (a, x) (da, ⟨⟩)) ∪ ⋃ x ∈ ds, f.base (a, x)
-              : Set 〚T'〛.X),
-          fun (da₁, ds₁) (da₂, ds₂) ⟨hda, hds⟩ => by
-            apply Set.union_subset_union
-            · apply Set.iUnion₂_subset
-              intro x hx
-              exact ((f' (a, x)).hom.monotone (show (da₁, (⟨⟩ : PUnit)) ≤ (da₂, ⟨⟩) from
-                ⟨hda, le_rfl⟩)).trans
-                (Set.subset_biUnion_of_mem (u := fun x => (f' (a, x)) (da₂, ⟨⟩))
-                  (Set.union_subset_union_right s hds hx))
-            · exact Set.iUnion₂_subset fun x hx =>
-                (Set.subset_biUnion_of_mem (u := fun x => f.base (a, x)) (hds hx))⟩,
+        have ⟨f', hf'⟩ := f.hasDeriv
+        refine ⟨fun (a, (s : Set 〚T〛.X)) => ?_,
           fun (a, (s : Set 〚T〛.X))
               ((da, (ds : Set 〚T〛.X)) : 𝕏.Δ a × Set 〚T〛.X) => ?_⟩
+        · let d (x : 〚T〛.X) : 𝕏.Δ a × PUnit →o Set 〚T'〛.X := f' (a, x)
+          exact (show 𝕏.Δ a × Set 〚T〛.X →o Set 〚T'〛.X from {
+            toFun := fun (da, ds) =>
+              (⋃ x ∈ s ∪ ds, d x (da, ⟨⟩)) ∪ ⋃ x ∈ ds, f.base (a, x)
+            monotone' := fun (da₁, ds₁) (da₂, ds₂) ⟨hda, hds⟩ => by
+              apply Set.union_subset_union
+              · apply Set.iUnion₂_subset
+                intro x hx
+                have hstep : ((da₁, PUnit.unit) : 𝕏.Δ a × PUnit) ≤ (da₂, PUnit.unit) :=
+                  ⟨hda, le_rfl⟩
+                exact ((d x).monotone hstep).trans
+                  (Set.subset_biUnion_of_mem (u := fun x => d x (da₂, ⟨⟩))
+                    (Set.union_subset_union_right s hds hx))
+              · exact Set.iUnion₂_subset fun x hx =>
+                  (Set.subset_biUnion_of_mem (u := fun x => f.base (a, x)) (hds hx))
+          })
         let before : 〚T〛.X → Set 〚T'〛.X := fun x => f.base (a, x)
         let after : 〚T〛.X → Set 〚T'〛.X := fun x => f.base (a ⨁[𝕏] da, x)
         let delta : 〚T〛.X → Set 〚T'〛.X := fun x => f' (a, x) (da, ⟨⟩)
@@ -144,15 +148,15 @@ instance LatTy.instFiniteC : ∀ L : LatTy, Finite 〚L〛.X
 noncomputable def LatTy.fixC {𝕏 : Change} {L : LatTy}
     (f : [𝕏]ᵈ ⊗ 〚L〛 ⟶ 〚L〛) :
     [𝕏]ᵈ ⟶ 〚L〛 where
-  base := @PartOrd.ofHom [𝕏]ᵈ.X 〚L〛.X _ _ {
+  base := {
     toFun a :=
       let f_a : 〚L〛.X →o 〚L〛.X :=
-        ⟨fun x => f.base (a, x), fun _ _ hxy => f.base.hom.monotone ⟨rfl, hxy⟩⟩
+        ⟨fun x => f.base (a, x), fun _ _ hxy => f.base.monotone ⟨rfl, hxy⟩⟩
       f_a^[L.card] (L.botC.base ⟨⟩)
     monotone' | _, _, rfl => le_rfl }
   hasDeriv :=
-    ⟨fun _ => PartOrd.ofHom ⟨fun ⟨⟩ => 〚L〛.zero _, fun _ _ _ => le_rfl⟩,
-      fun _ ⟨⟩ => (〚L〛.zero_update _).symm⟩
+    ⟨fun _ => OrderHom.const _ (𝟬[〚L〛] _),
+      fun _ ⟨⟩ => (〚L〛.str.zero_update _).symm⟩
 
 theorem FinTy.nat_card_eqC : ∀ T : FinTy, Nat.card 〚T〛.X = T.card
   | unit => by
