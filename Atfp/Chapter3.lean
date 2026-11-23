@@ -1,8 +1,8 @@
 module
 
+public import Mathlib.Basic.Rel
 public import Mathlib.CategoryTheory.Endofunctor.Algebra
 public import Mathlib.CategoryTheory.Limits.Shapes.FunctorToTypes
-public import Mathlib.Data.Rel
 
 @[expose] public section
 

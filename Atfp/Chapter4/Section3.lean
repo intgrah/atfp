@@ -3,9 +3,9 @@ module
 public import Mathlib.CategoryTheory.Monad.Basic
 public import Mathlib.CategoryTheory.Monoidal.Cartesian.Basic
 public import Mathlib.CategoryTheory.Monoidal.Closed.Basic
-public import Mathlib.Data.Sum.Order
 public import Mathlib.Data.Set.BooleanAlgebra
 public import Mathlib.Order.Category.Semilat
+public import Mathlib.Order.Sum.Order
 
 @[expose] public section
 

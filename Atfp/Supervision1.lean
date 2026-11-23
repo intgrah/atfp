@@ -3,7 +3,7 @@ module
 public import Mathlib.Algebra.Category.MonCat.Basic
 public import Mathlib.CategoryTheory.Category.RelCat
 public import Mathlib.CategoryTheory.Endofunctor.Algebra
-public import Mathlib.CategoryTheory.Limits.Shapes.BinaryProducts
+public import Mathlib.CategoryTheory.Limits.Shapes.BinaryProducts.ProdComparison
 public import Mathlib.Order.Category.PartOrd
 
 @[expose] public section

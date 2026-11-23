@@ -2,8 +2,8 @@ module
 
 public import Mathlib.SetTheory.Cardinal.Finite
 
-import Mathlib.Data.Finite.Prod
-import Mathlib.Data.Finite.Sum
+import Mathlib.Basic.Finite.Prod
+import Mathlib.Basic.Finite.Sum
 
 import Atfp.Chapter4.Section1
 public import Atfp.Chapter4.Section4.Datafun
